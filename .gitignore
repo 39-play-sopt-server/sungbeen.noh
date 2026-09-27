@@ -1,42 +1,54 @@
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+# Gradle: 공유 빌드 설정과 Wrapper는 포함하고 로컬 캐시/빌드 결과만 제외합니다.
+.gradle/
+**/build/
+!**/src/**/build/
+gradle-app.setting
+.gradletasknamecache
+!/gradle/wrapper/gradle-wrapper.jar
+!/gradle/wrapper/gradle-wrapper.properties
 
-### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-*.iws
+# JVM: 컴파일 결과와 진단 덤프
+*.class
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# IntelliJ IDEA: Gradle에서 재생성하는 IDE 설정과 개인 작업 상태
+.idea/
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
+*.iws
+/out/
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-
-### Mac OS ###
+# macOS: Finder 메타데이터와 압축 해제 부산물
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+__MACOSX/
+
+# 실행 로그 (logback-spring.xml 등 공유 로그 설정은 포함)
+*.log
+/logs/
+
+# 개인 환경변수: 예제 파일은 공유합니다.
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
+!.env.*.sample
+!.env.*.template
+
+# Spring Boot: 개인용 local 프로필만 제외합니다.
+# application.yml 및 공유 dev/test/prod 설정은 계속 추적합니다.
+application-local.yml
+application-local.yaml
+application-local.properties
+http-client.private.env.json
+
+# Review Zoo: 저장할 SVG/state와 달리 중간 파일은 제외합니다.
+/README.md.tmp
+/assets/review-zoo/*.tmp
+/.review-zoo-save/

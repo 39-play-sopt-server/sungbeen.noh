@@ -1,0 +1,106 @@
+name: Review Zoo
+
+on:
+  workflow_dispatch:
+    inputs:
+      save:
+        description: '미리보기뿐 아니라 main에도 결과를 저장합니다'
+        type: boolean
+        default: false
+        required: false
+  schedule:
+    - cron: '23 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/review-zoo/**'
+      - 'assets/review-zoo/sprites.json'
+      - '.github/workflows/review-zoo.yml'
+  pull_request:
+    paths:
+      - 'scripts/review-zoo/**'
+      - 'assets/review-zoo/**'
+      - 'README.md'
+      - '.github/workflows/review-zoo.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-zoo-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.event_name != 'schedule' || vars.REVIEW_ZOO_AUTOPUBLISH != 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/review-zoo/*.test.mjs
+
+  generate:
+    needs: test
+    if: github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || vars.REVIEW_ZOO_AUTOPUBLISH != 'false')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Read reviews and render local files
+        run: node scripts/review-zoo/index.mjs --sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: review-zoo-save
+          path: |
+            README.md
+            assets/review-zoo/world.svg
+            assets/review-zoo/state.json
+          retention-days: 14
+          if-no-files-found: error
+
+  # Publishing begins only after the user merges this workflow into main.
+  # Manual runs remain preview-only unless the save checkbox is selected.
+  publish:
+    needs: generate
+    if: vars.REVIEW_ZOO_AUTOPUBLISH != 'false' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.save)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+      - name: Refuse stale overwrite
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA" || {
+            echo 'main changed during generation. Rerun the workflow.'
+            exit 1
+          }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: review-zoo-save
+          path: .review-zoo-save
+      - name: Save only generated outputs
+        run: |
+          cp .review-zoo-save/README.md README.md
+          cp .review-zoo-save/assets/review-zoo/world.svg assets/review-zoo/world.svg
+          cp .review-zoo-save/assets/review-zoo/state.json assets/review-zoo/state.json
+          git add -- README.md assets/review-zoo/world.svg assets/review-zoo/state.json
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'docs: save review zoo progress'
+          git push origin HEAD:main

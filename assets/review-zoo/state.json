@@ -1,12 +1,19 @@
 {
   "repository": "39-play-sopt-server/sungbeen.noh",
   "author": "SungKong00",
-  "lastSyncedAt": "2026-09-26T15:42:42.480Z",
+  "lastSyncedAt": "2026-10-10T12:43:37.600Z",
   "rounds": [
     {
       "number": 1,
       "since": "1970-01-01T00:00:00.000Z",
-      "pets": []
+      "pets": [
+        {
+          "id": 164884779,
+          "username": "mindolii",
+          "comments": 6,
+          "reviews": 1
+        }
+      ]
     }
   ]
 }

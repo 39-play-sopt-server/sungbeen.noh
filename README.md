@@ -11,9 +11,11 @@
 
 ### Round 1 · 진행 중
 
-아직 합류한 리뷰어가 없습니다. 첫 리뷰를 기다리는 중!
+| 동료 | 레벨 | Inline comments | Reviews |
+| --- | --- | --- | --- |
+| [@mindolii](https://github.com/mindolii) | LV2 | 6 | 1 |
 
-집계 데이터 확인 시각(변경 시 저장): 2026-09-26T15:42:42.480Z
+집계 데이터 확인 시각(변경 시 저장): 2026-10-10T12:43:37.600Z
 
 </details>
 <!-- REVIEW-ZOO:END -->

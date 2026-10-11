@@ -14,8 +14,9 @@
 | 동료 | 레벨 | Inline comments | Reviews |
 | --- | --- | --- | --- |
 | [@mindolii](https://github.com/mindolii) | LV2 | 6 | 1 |
+| [@KateteDeveloper](https://github.com/KateteDeveloper) | LV1 | 1 | 1 |
 
-집계 데이터 확인 시각(변경 시 저장): 2026-10-10T12:43:37.600Z
+집계 데이터 확인 시각(변경 시 저장): 2026-10-11T13:05:35.442Z
 
 </details>
 <!-- REVIEW-ZOO:END -->

@@ -1,7 +1,7 @@
 {
   "repository": "39-play-sopt-server/sungbeen.noh",
   "author": "SungKong00",
-  "lastSyncedAt": "2026-10-10T12:43:37.600Z",
+  "lastSyncedAt": "2026-10-11T13:05:35.442Z",
   "rounds": [
     {
       "number": 1,
@@ -11,6 +11,12 @@
           "id": 164884779,
           "username": "mindolii",
           "comments": 6,
+          "reviews": 1
+        },
+        {
+          "id": 192939184,
+          "username": "KateteDeveloper",
+          "comments": 1,
           "reviews": 1
         }
       ]

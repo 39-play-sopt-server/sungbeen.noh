@@ -15,8 +15,10 @@ import org.sopt.post.service.dto.CategoryResponse;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.sopt.post.service.port.PostRepository;
+import org.springframework.stereotype.Service;
 
 // 의존하고 있는 객체를 추상화 하여 PostService가 PostRepository 구현체에 직접 의존하지 않도록 설계
+@Service
 public final class PostService {
 
     // 모든 Service 객체에서 같은 작성 한도를 사용하도록 static final 지정

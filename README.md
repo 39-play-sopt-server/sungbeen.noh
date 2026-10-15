@@ -3,7 +3,7 @@
 <!-- REVIEW-ZOO:START -->
 ![Server Quest HUD — OT~8주차 진행도와 리뷰 펫](assets/review-zoo/world.svg)
 
-**현재 퀘스트:** OT · **활동 조:** Round 1  
+**현재 퀘스트:** 2주차 · **활동 조:** Round 1  
 진화 규칙: inline review comment **0–4개 LV1 · 5–9개 LV2 · 10개 이상 LV3**. 리뷰만 남겨도 LV1 동료로 합류합니다.
 
 <details>

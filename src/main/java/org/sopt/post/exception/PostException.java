@@ -1,11 +1,17 @@
 package org.sopt.post.exception;
 
-// 게시글 예외의  공통 부모 클래스
-public abstract class PostException extends RuntimeException {
+import org.sopt.common.exception.BusinessException;
 
-    // 자식 예외에서 생성자를 사용할 수 있도록 protected 지정
-    protected PostException(String message) {
-        // 호출한 곳에서 처리할 수 있도록 오류 메시지 전달
-        super(message);
+// 게시글 처리 중 발생한 예외
+public class PostException extends BusinessException {
+
+    // 게시글 오류 코드만 받아 기본 메시지 사용
+    public PostException(PostErrorCode errorCode) {
+        super(errorCode);
+    }
+
+    // 상황에 맞는 오류 메시지 사용
+    public PostException(PostErrorCode errorCode, String message) {
+        super(errorCode, message);
     }
 }

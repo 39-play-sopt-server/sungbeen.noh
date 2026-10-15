@@ -8,12 +8,14 @@ import java.util.Objects;
 
 import org.sopt.post.domain.Category;
 import org.sopt.post.domain.Post;
-import org.sopt.post.exception.InvalidPostException;
-import org.sopt.post.exception.PostLimitExceededException;
-import org.sopt.post.exception.PostNotFoundException;
+import org.sopt.common.exception.BusinessException;
+import org.sopt.common.exception.CommonErrorCode;
+import org.sopt.post.exception.PostErrorCode;
+import org.sopt.post.exception.PostException;
 import org.sopt.post.service.dto.CategoryResponse;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
+import org.sopt.post.service.dto.PostPageResponse;
 import org.sopt.post.service.port.PostRepository;
 import org.springframework.stereotype.Service;
 
@@ -23,27 +25,29 @@ public final class PostService {
 
     // 모든 Service 객체에서 같은 작성 한도를 사용하도록 static final 지정
     private static final int MAX_POST_COUNT = 100;
+    private static final int MAX_PAGE_SIZE = 100;
 
     // 저장 방식을 바꿀 수 있도록 PostRepository 인터페이스 사용
     private final PostRepository repository;
 
-    // 마지막으로 발급한 게시글 ID, JPA 사용시 지울 수 있음
+    // 마지막으로 발급한 게시글 ID
+    // TODO DB에서 ID 직접 생성시 삭제하기
     private long sequence;
 
-    // 저장소를 직접 생성하지 않고 외부에서 전달받음. 즉, PostService는 PostRepository 구현체에 직접 의존하지 않음
-    // Spring에서도 같은 생성자 사용,  Bean으로 등록한 저장소 구현체 주입
     public PostService(PostRepository repository) {
         this.repository = Objects.requireNonNull(repository);
     }
 
-    // 게시글 작성
-    public PostResponse create(PostRequest request) {
+    // 게시글 작성성
+    // synchronized의 자세한 원리 더 공부하기...
+    public synchronized PostResponse create(PostRequest request) {
         requireRequest(request);
         Category category = Category.from(request.category());
 
         // 최대 게시글 수 확인
         if (repository.count() >= MAX_POST_COUNT) {
-            throw new PostLimitExceededException(MAX_POST_COUNT);
+            throw new PostException(PostErrorCode.POST_LIMIT_EXCEEDED,
+                    "게시글은 최대 " + MAX_POST_COUNT + "개까지 작성할 수 있습니다.");
         }
 
         // 새 ID를 발급하고 입력값을 검증하여 게시글 생성
@@ -56,20 +60,52 @@ public final class PostService {
     }
 
     // 게시글 목록 조회
-    public List<PostResponse> findAll() {
-        return repository.findAll().stream()
+    // 유효성 검사 controller 에서 할까 고민했지만, service에 엉뚱한 값이 예상 못 한 경로로 들어오는 것을 막기 위해 보수적으로 service에서 검증하기로 결정
+    public synchronized PostPageResponse findAll(int page, int size, String category) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST,
+                    "page는 0 이상, size는 1 이상 " + MAX_PAGE_SIZE + " 이하여야 합니다.");
+        }
+
+        Category selectedCategory;
+        if (category == null) {
+            selectedCategory = null;
+        } else {
+            selectedCategory = Category.from(category);
+        }
+
+        // 카테고리 필터 후 ID 순서로 정렬
+        List<Post> filteredPosts = repository.findAll().stream()
+                .filter(post -> selectedCategory == null || post.getCategory() == selectedCategory)
                 .sorted(Comparator.comparingLong(Post::getId))
+                .toList();
+
+        // 큰 page 값의 곱셈 오류를 막기 위해 long으로 시작 위치 계산
+        long offset = (long) page * size;
+        List<PostResponse> items = filteredPosts.stream()
+                .skip(offset)
+                .limit(size)
                 .map(PostResponse::from)
                 .toList();
+
+        // 필터링된 전체 게시글 수를 기준으로 페이지 수 계산
+        int totalElements = filteredPosts.size();
+        int totalPages = (totalElements + size - 1) / size;
+        return new PostPageResponse(items, page, size, totalElements, totalPages);
     }
 
     // 게시글 단건 조회
-    public PostResponse findById(long id) {
-        return PostResponse.from(getPost(id));
+    public synchronized PostResponse findById(long id) {
+        Post post = getPost(id);
+
+        // 상세 조회에서만 조회수 증가 후 저장
+        Post viewedPost = post.increaseViewCount();
+        repository.save(viewedPost);
+        return PostResponse.from(viewedPost);
     }
 
     // 게시글 수정
-    public PostResponse update(long id, PostRequest request) {
+    public synchronized PostResponse update(long id, PostRequest request) {
         requireRequest(request);
         Category category = Category.from(request.category());
 
@@ -81,10 +117,10 @@ public final class PostService {
     }
 
     // 게시글 삭제
-    public void delete(long id) {
+    public synchronized void delete(long id) {
         // 삭제된 게시글이 없으면 예외 발생
         if (!repository.deleteById(id)) {
-            throw new PostNotFoundException(id);
+            throw new PostException(PostErrorCode.POST_NOT_FOUND);
         }
     }
 
@@ -100,13 +136,13 @@ public final class PostService {
     private Post getPost(long id) {
         // 조회 결과가 없으면 orElseThrow로 예외 발생
         return repository.findById(id)
-                .orElseThrow(() -> new PostNotFoundException(id));
+                .orElseThrow(() -> new PostException(PostErrorCode.POST_NOT_FOUND));
     }
 
     // 게시글 입력 여부 확인
     private void requireRequest(PostRequest request) {
         if (request == null) {
-            throw new InvalidPostException("게시글 입력이 필요합니다.");
+            throw new PostException(PostErrorCode.INVALID_POST, "게시글 입력이 필요합니다.");
         }
     }
 }

@@ -3,15 +3,12 @@ package org.sopt.post.controller;
 import java.util.List;
 import java.util.Objects;
 
-import org.sopt.post.controller.response.RestResponse;
-import org.sopt.post.controller.response.ResponseCode;
-import org.sopt.post.exception.InvalidPostException;
-import org.sopt.post.exception.PostLimitExceededException;
-import org.sopt.post.exception.PostNotFoundException;
+import org.sopt.common.response.RestResponse;
 import org.sopt.post.service.PostService;
 import org.sopt.post.service.dto.CategoryResponse;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
+import org.sopt.post.service.dto.PostPageResponse;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,102 +16,74 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-// main에서 게시글 요청을 받아 처리 결과 반환
-// Spring REST 전환 시 @RestController와 요청 경로 매핑으로 HTTP 요청 수신
-// 현재는 각 메서드에서 업무 예외 처리
-// Spring REST 전환 시 GlobalExceptionHandler에 @RestControllerAdvice를 붙여 공통 처리, 지금은 지저분해도 참으세요 ㅎㅎ
+
 @RestController
 @RequestMapping("/api/v1/posts")
-public final class PostController {
+public final class PostController implements PostControllerDocs {
 
     // 전달받은 Service를 다른 객체로 바꾸지 못하도록 final 지정
     private final PostService service;
 
     // Controller가 Service를 직접 생성하지 않고 외부에서 전달받음
-    // 현재는 Main에서 전달, Spring 전환 시 등록된 Service를 컨테이너에서 주입
     public PostController(PostService service) {
         this.service = Objects.requireNonNull(service);
     }
 
     // 게시글 작성 요청
+    @Override
     @PostMapping
     public ResponseEntity<RestResponse<PostResponse>> create(@RequestBody PostRequest request) {
-        try {
-            // 게시글 작성 후 성공 응답 생성
-            PostResponse post = service.create(request);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(RestResponse.success("게시글이 작성되었습니다.", post));
-        } catch (InvalidPostException exception) {
-            // 입력값 오류 응답 생성
-            return ResponseEntity.badRequest()
-                    .body(RestResponse.failure(ResponseCode.INVALID_POST, exception.getMessage()));
-        } catch (PostLimitExceededException exception) {
-            // 작성 한도 초과 응답 생성
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(RestResponse.failure(ResponseCode.POST_LIMIT_EXCEEDED, exception.getMessage()));
-        }
+        PostResponse post = service.create(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(RestResponse.success("게시글이 작성되었습니다.", post));
     }
 
     // 게시글 목록 조회 요청
+    @Override
     @GetMapping
-    public ResponseEntity<RestResponse<List<PostResponse>>> findAll() {
+    public ResponseEntity<RestResponse<PostPageResponse>> findAll(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "category", required = false) String category) {
         // 게시글 목록 조회 후 성공 응답 생성
-        List<PostResponse> posts = service.findAll();
+        PostPageResponse posts = service.findAll(page, size, category);
         return ResponseEntity.ok(RestResponse.success("게시글 목록을 조회했습니다.", posts));
     }
 
     // 게시글 단건 조회 요청
+    @Override
     @GetMapping("/{id}")
-    public ResponseEntity<RestResponse<PostResponse>> findById(@PathVariable long id) {
-        try {
-            // 게시글 조회 후 성공 응답 생성
-            PostResponse post = service.findById(id);
-            return ResponseEntity.ok(RestResponse.success("게시글을 조회했습니다.", post));
-        } catch (PostNotFoundException exception) {
-            // 존재하지 않는 게시글의 실패 응답 생성
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(RestResponse.failure(ResponseCode.POST_NOT_FOUND, exception.getMessage()));
-        }
+    public ResponseEntity<RestResponse<PostResponse>> findById(@PathVariable("id") long id) {
+        PostResponse post = service.findById(id);
+        return ResponseEntity.ok(RestResponse.success("게시글을 조회했습니다.", post));
     }
 
     // 게시글 수정 요청
+    @Override
     @PutMapping("/{id}")
-    public ResponseEntity<RestResponse<PostResponse>> update(@PathVariable long id,
-                                                             @RequestBody PostRequest request) {
-        try {
-            // 게시글 수정 후 성공 응답 생성
-            PostResponse post = service.update(id, request);
-            return ResponseEntity.ok(RestResponse.success("게시글이 수정되었습니다.", post));
-        } catch (InvalidPostException exception) {
-            // 입력값 오류 응답 생성
-            return ResponseEntity.badRequest()
-                    .body(RestResponse.failure(ResponseCode.INVALID_POST, exception.getMessage()));
-        } catch (PostNotFoundException exception) {
-            // 존재하지 않는 게시글의 실패 응답 생성
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(RestResponse.failure(ResponseCode.POST_NOT_FOUND, exception.getMessage()));
-        }
+    public ResponseEntity<RestResponse<PostResponse>> update(@PathVariable("id") long id,
+                                                            @RequestBody PostRequest request) {
+        // 게시글 수정 후 성공 응답 생성
+        PostResponse post = service.update(id, request);
+        return ResponseEntity.ok(RestResponse.success("게시글이 수정되었습니다.", post));
     }
 
     // 게시글 삭제 요청
+    @Override
     @DeleteMapping("/{id}")
-    public ResponseEntity<RestResponse<Void>> delete(@PathVariable long id) {
-        try {
-            // 게시글 삭제 후 성공 응답 생성
-            service.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (PostNotFoundException exception) {
-            // 존재하지 않는 게시글의 실패 응답 생성
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(RestResponse.failure(ResponseCode.POST_NOT_FOUND, exception.getMessage()));
-        }
+    public ResponseEntity<RestResponse<Void>> delete(@PathVariable("id") long id) {
+        service.delete(id);
+        return ResponseEntity.ok(RestResponse.success("게시글이 삭제되었습니다.", null));
     }
 
     // 카테고리 목록 조회 요청
+    @Override
     @GetMapping("/categories")
     public ResponseEntity<RestResponse<List<CategoryResponse>>> getCategories() {
         // 카테고리 목록 조회 후 성공 응답 생성

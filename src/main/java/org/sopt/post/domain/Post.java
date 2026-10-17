@@ -3,7 +3,8 @@ package org.sopt.post.domain;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-import org.sopt.post.exception.InvalidPostException;
+import org.sopt.post.exception.PostErrorCode;
+import org.sopt.post.exception.PostException;
 
 // 게시글 데이터와 검증 규칙 관리
 public final class Post {
@@ -14,17 +15,18 @@ public final class Post {
     private final Category category;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    private final long viewCount;
 
     private Post(long id, String title, String content, Category category,
-                 LocalDateTime createdAt, LocalDateTime updatedAt) {
+                 LocalDateTime createdAt, LocalDateTime updatedAt, long viewCount) {
         // 게시글 ID와 필수 입력값 확인
         if (id <= 0) {
-            throw new InvalidPostException("게시글 ID는 양수여야 합니다.");
+            throw new PostException(PostErrorCode.INVALID_POST, "게시글 ID는 양수여야 합니다.");
         }
         validateText(title, "제목");
         validateText(content, "본문");
         if (category == null) {
-            throw new InvalidPostException("카테고리는 필수입니다.");
+            throw new PostException(PostErrorCode.INVALID_POST, "카테고리는 필수입니다.");
         }
 
         this.id = id;
@@ -33,24 +35,30 @@ public final class Post {
         this.category = category;
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
+        this.viewCount = viewCount;
     }
 
     // 게시글 생성
     public static Post create(long id, String title, String content,
                               Category category, LocalDateTime now) {
-        return new Post(id, title, content, category, now, now);
+        return new Post(id, title, content, category, now, now, 0);
     }
 
     // 수정한 게시글을 새 객체로 반환
     public Post update(String title, String content, Category category, LocalDateTime now) {
-        return new Post(id, title, content, category, createdAt, now);  //  id를 유지하고 createdAt은 그대로, updatedAt은 현재 시각으로 변경
+        return new Post(id, title, content, category, createdAt, now, viewCount);
+    }
+
+    // 작성·수정 시각을 유지하고 조회수가 증가한 게시글 반환
+    public Post increaseViewCount() {
+        return new Post(id, title, content, category, createdAt, updatedAt, viewCount + 1);
     }
 
     // 제목과 내용의 입력값 확인
     private static void validateText(String value, String fieldName) {
         // 값이 없거나 공백만 입력된 경우 예외 발생
         if (value == null || value.isBlank()) {
-            throw new InvalidPostException(fieldName + "은 필수입니다.");
+            throw new PostException(PostErrorCode.INVALID_POST, fieldName + "은 필수입니다.");
         }
     }
 
@@ -82,5 +90,10 @@ public final class Post {
     // 수정 시각 조회
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    // 조회수 확인
+    public long getViewCount() {
+        return viewCount;
     }
 }

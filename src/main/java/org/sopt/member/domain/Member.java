@@ -6,12 +6,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.sopt.common.domain.BaseEntity;
 import org.sopt.member.exception.MemberErrorCode;
 import org.sopt.member.exception.MemberException;
 
 @Entity
 @Table(name = "members")
-public class Member {
+public class Member extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,7 +21,8 @@ public class Member {
     @Column(nullable = false)
     private String name;
 
-    // 중요! JPA에서 객체를 조회할 때, 빈 객체를 리플렉션으로 먼저 생성하고 조회를 한 뒤 채워넣는데, 그 때 사용하기 위한 빈 생성자를 만들어줘야 작동한다.
+    // 중요! JPA가 DB에서 조회한 데이터를 엔티티 객체로 복원할 때 사용하는 기본 생성자
+    // 직접 다른 생성자를 만들면 자바가 기본 생성자를 자동으로 만들어주지 않아 별도로 작성
     protected Member() {
     }
 

@@ -2,7 +2,6 @@ package org.sopt.post.service;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -23,6 +22,10 @@ import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.sopt.post.service.dto.PostPageResponse;
 import org.sopt.post.repository.PostRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 // 게시글 처리와 JPA 저장소 호출 담당
@@ -80,31 +83,22 @@ public class PostService {
                     "page는 0 이상, size는 1 이상 " + MAX_PAGE_SIZE + " 이하여야 합니다.");
         }
 
-        Category selectedCategory;
+        // 생성일이 같을 때도 순서가 일정하도록 ID를 두 번째 정렬 기준으로 사용
+        Sort sort = Sort.by(
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id")
+        );
+        // 페이지 번호와 크기, 정렬 기준을 DB 조회에 전달
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        // 전체 데이터를 가져와 자르는 대신 DB에서 필터와 페이지 조회
+        Page<Post> posts;
         if (category == null) {
-            selectedCategory = null;
+            posts = repository.findAll(pageable);
         } else {
-            selectedCategory = Category.from(category);
+            posts = repository.findByCategory(Category.from(category), pageable);
         }
-
-        // 카테고리 필터 후 ID 순서로 정렬
-        List<Post> filteredPosts = repository.findAll().stream()
-                .filter(post -> selectedCategory == null || post.getCategory() == selectedCategory)
-                .sorted(Comparator.comparingLong(Post::getId))
-                .toList();
-
-        // 큰 page 값의 곱셈 오류를 막기 위해 long으로 시작 위치 계산
-        long offset = (long) page * size;
-        List<PostResponse> items = filteredPosts.stream()
-                .skip(offset)
-                .limit(size)
-                .map(PostResponse::from)
-                .toList();
-
-        // 필터링된 전체 게시글 수를 기준으로 페이지 수 계산
-        int totalElements = filteredPosts.size();
-        int totalPages = (totalElements + size - 1) / size;
-        return new PostPageResponse(items, page, size, totalElements, totalPages);
+        return PostPageResponse.from(posts);
     }
 
     // 게시글 단건 조회
@@ -112,10 +106,10 @@ public class PostService {
     public synchronized PostResponse findById(long id) {
         Post post = getPost(id);
 
-        // 상세 조회에서만 조회수 증가 후 저장
-        Post viewedPost = post.increaseViewCount();
-        Post savedPost = repository.save(viewedPost);
-        return PostResponse.from(savedPost);
+        // 상세 조회에서만 조회수 증가
+        // 트랜잭션 안에서 관리 중인 엔티티를 변경하면 JPA가 변경 내용을 반영
+        post.increaseViewCount();
+        return PostResponse.from(post);
     }
 
     // 게시글 수정
@@ -124,11 +118,11 @@ public class PostService {
         requireRequest(request);
         Category category = Category.from(request.category());
 
-        // 수정할 게시글 조회, 새 입력값과 현재 시각으로 게시글 생성
-        Post updatedPost = getPost(id).update(request.title(), request.content(), category, LocalDateTime.now());
-        Post savedPost = repository.save(updatedPost);
+        // 조회한 게시글의 내용과 수정 시각 변경
+        Post post = getPost(id);
+        post.update(request.title(), request.content(), category, LocalDateTime.now());
 
-        return PostResponse.from(savedPost);
+        return PostResponse.from(post);
     }
 
     // 게시글 삭제

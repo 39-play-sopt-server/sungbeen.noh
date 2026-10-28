@@ -39,7 +39,7 @@ public interface PostControllerDocs {
     ResponseEntity<RestResponse<PostResponse>> create(PostCreateRequest request);
 
     @Operation(summary = "게시글 목록 조회",
-            description = "카테고리 필터 후 ID 오름차순으로 페이지를 반환합니다. 목록 조회는 조회수를 올리지 않습니다. 범위를 벗어난 페이지는 빈 목록입니다.")
+            description = "카테고리 필터 후 생성일 최신순으로 페이지를 반환합니다. 생성일이 같으면 ID 내림차순입니다. 목록 조회는 조회수를 올리지 않습니다. 범위를 벗어난 페이지는 빈 목록입니다.")
     @ApiResponse(
             responseCode = "200", description = "목록 조회 성공", useReturnTypeSchema = true)
     @ApiResponse(

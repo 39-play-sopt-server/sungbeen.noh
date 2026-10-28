@@ -14,6 +14,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.sopt.common.domain.BaseEntity;
 import org.sopt.member.domain.Member;
 import org.sopt.post.exception.PostErrorCode;
 import org.sopt.post.exception.PostException;
@@ -21,7 +22,7 @@ import org.sopt.post.exception.PostException;
 // 게시글 데이터와 검증 규칙 관리 / JPA 테이블 매핑
 @Entity
 @Table(name = "posts")
-public class Post {
+public class Post extends BaseEntity {
 
     // 저장 전에는 null, 저장 후에는 저장소에서 발급한 ID 사용
     @Id
@@ -46,9 +47,6 @@ public class Post {
     private Member author;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @Column(nullable = false)
@@ -58,42 +56,47 @@ public class Post {
     protected Post() {
     }
 
-    private Post(Long id, String title, String content, Category category,
-                 Member author, LocalDateTime createdAt, LocalDateTime updatedAt, long viewCount) {
-        // 게시글 ID와 필수 입력값 확인
-        if (id != null && id <= 0) {
-            throw new PostException(PostErrorCode.INVALID_POST, "게시글 ID는 양수여야 합니다.");
-        }
+    private Post(String title, String content, Category category,
+                 Member author, LocalDateTime now) {
+        // 게시글 필수 입력값 확인
         validateText(title, "제목");
         validateText(content, "본문");
         if (category == null) {
             throw new PostException(PostErrorCode.INVALID_POST, "카테고리는 필수입니다.");
         }
 
-        this.id = id;
         this.title = title;
         this.content = content;
         this.category = category;
         this.author = Objects.requireNonNull(author);
-        this.createdAt = Objects.requireNonNull(createdAt);
-        this.updatedAt = Objects.requireNonNull(updatedAt);
-        this.viewCount = viewCount;
+        this.updatedAt = Objects.requireNonNull(now);
+        this.viewCount = 0;
     }
 
     // 게시글 생성
     public static Post create(String title, String content,
                               Category category, Member author, LocalDateTime now) {
-        return new Post(null, title, content, category, author, now, now, 0);
+        return new Post(title, content, category, author, now);
     }
 
-    // 수정한 게시글을 새 객체로 반환
-    public Post update(String title, String content, Category category, LocalDateTime now) {
-        return new Post(id, title, content, category, author, createdAt, now, viewCount);
+    // 입력값을 검증한 뒤 기존 게시글의 내용과 수정 시각 변경
+    public void update(String title, String content, Category category, LocalDateTime now) {
+        validateText(title, "제목");
+        validateText(content, "본문");
+        if (category == null) {
+            throw new PostException(PostErrorCode.INVALID_POST, "카테고리는 필수입니다.");
+        }
+        Objects.requireNonNull(now);
+
+        this.title = title;
+        this.content = content;
+        this.category = category;
+        this.updatedAt = now;
     }
 
-    // 작성·수정 시각을 유지하고 조회수가 증가한 게시글 반환
-    public Post increaseViewCount() {
-        return new Post(id, title, content, category, author, createdAt, updatedAt, viewCount + 1);
+    // 작성·수정 시각은 유지하고 조회수만 증가
+    public void increaseViewCount() {
+        this.viewCount++;
     }
 
     // 제목과 내용의 입력값 확인
@@ -127,11 +130,6 @@ public class Post {
     // 작성자 조회
     public Member getAuthor() {
         return author;
-    }
-
-    // 작성 시각 조회
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
     }
 
     // 수정 시각 조회

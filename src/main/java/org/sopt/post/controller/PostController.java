@@ -6,6 +6,7 @@ import java.util.Objects;
 import org.sopt.common.response.RestResponse;
 import org.sopt.post.service.PostService;
 import org.sopt.post.service.dto.CategoryResponse;
+import org.sopt.post.service.dto.PostCreateRequest;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.sopt.post.service.dto.PostPageResponse;
@@ -37,7 +38,7 @@ public final class PostController implements PostControllerDocs {
     // 게시글 작성 요청
     @Override
     @PostMapping
-    public ResponseEntity<RestResponse<PostResponse>> create(@RequestBody PostRequest request) {
+    public ResponseEntity<RestResponse<PostResponse>> create(@RequestBody PostCreateRequest request) {
         PostResponse post = service.create(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)

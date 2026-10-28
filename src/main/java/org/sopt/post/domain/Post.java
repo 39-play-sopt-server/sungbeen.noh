@@ -10,7 +10,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.sopt.member.domain.Member;
 import org.sopt.post.exception.PostErrorCode;
 import org.sopt.post.exception.PostException;
 
@@ -36,6 +40,11 @@ public class Post {
     @Column(nullable = false)
     private Category category;
 
+    // 여러 게시글이 한 명의 회원을 작성자로 참조 / 필요할 때 작성자 조회
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member author;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -50,7 +59,7 @@ public class Post {
     }
 
     private Post(Long id, String title, String content, Category category,
-                 LocalDateTime createdAt, LocalDateTime updatedAt, long viewCount) {
+                 Member author, LocalDateTime createdAt, LocalDateTime updatedAt, long viewCount) {
         // 게시글 ID와 필수 입력값 확인
         if (id != null && id <= 0) {
             throw new PostException(PostErrorCode.INVALID_POST, "게시글 ID는 양수여야 합니다.");
@@ -65,6 +74,7 @@ public class Post {
         this.title = title;
         this.content = content;
         this.category = category;
+        this.author = Objects.requireNonNull(author);
         this.createdAt = Objects.requireNonNull(createdAt);
         this.updatedAt = Objects.requireNonNull(updatedAt);
         this.viewCount = viewCount;
@@ -72,18 +82,18 @@ public class Post {
 
     // 게시글 생성
     public static Post create(String title, String content,
-                              Category category, LocalDateTime now) {
-        return new Post(null, title, content, category, now, now, 0);
+                              Category category, Member author, LocalDateTime now) {
+        return new Post(null, title, content, category, author, now, now, 0);
     }
 
     // 수정한 게시글을 새 객체로 반환
     public Post update(String title, String content, Category category, LocalDateTime now) {
-        return new Post(id, title, content, category, createdAt, now, viewCount);
+        return new Post(id, title, content, category, author, createdAt, now, viewCount);
     }
 
     // 작성·수정 시각을 유지하고 조회수가 증가한 게시글 반환
     public Post increaseViewCount() {
-        return new Post(id, title, content, category, createdAt, updatedAt, viewCount + 1);
+        return new Post(id, title, content, category, author, createdAt, updatedAt, viewCount + 1);
     }
 
     // 제목과 내용의 입력값 확인
@@ -112,6 +122,11 @@ public class Post {
     // 게시글 카테고리 조회
     public Category getCategory() {
         return category;
+    }
+
+    // 작성자 조회
+    public Member getAuthor() {
+        return author;
     }
 
     // 작성 시각 조회

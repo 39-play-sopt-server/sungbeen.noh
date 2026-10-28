@@ -11,6 +11,9 @@ import java.util.Optional;
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
 
+    // 회원 삭제 전 작성한 게시글 존재 여부 확인
+    boolean existsByAuthorId(Long memberId);
+
     Optional<Post> findById(Long id);
 
     List<Post> findAll();

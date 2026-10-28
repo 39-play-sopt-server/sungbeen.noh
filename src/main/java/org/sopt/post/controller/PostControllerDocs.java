@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.sopt.common.response.RestResponse;
 import org.sopt.post.service.dto.CategoryResponse;
 import org.sopt.post.service.dto.PostPageResponse;
+import org.sopt.post.service.dto.PostCreateRequest;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ import org.springframework.http.ResponseEntity;
 public interface PostControllerDocs {
 
     @Operation(summary = "게시글 작성",
-            description = "제목·본문은 필수이며, category는 FREE, QUESTION, NOTICE 중 하나입니다. 최초 조회수는 0입니다.")
+            description = "작성자 회원 ID, 제목·본문은 필수이며, category는 FREE, QUESTION, NOTICE 중 하나입니다. 최초 조회수는 0입니다.")
     @ApiResponse(
             responseCode = "201", description = "작성 성공", useReturnTypeSchema = true)
     @ApiResponse(
@@ -32,7 +33,10 @@ public interface PostControllerDocs {
     @ApiResponse(
             responseCode = "409", description = "최대 게시글 수 초과",
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
-    ResponseEntity<RestResponse<PostResponse>> create(PostRequest request);
+    @ApiResponse(
+            responseCode = "404", description = "존재하지 않는 작성자",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    ResponseEntity<RestResponse<PostResponse>> create(PostCreateRequest request);
 
     @Operation(summary = "게시글 목록 조회",
             description = "카테고리 필터 후 ID 오름차순으로 페이지를 반환합니다. 목록 조회는 조회수를 올리지 않습니다. 범위를 벗어난 페이지는 빈 목록입니다.")

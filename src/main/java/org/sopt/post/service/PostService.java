@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.Objects;
 
 import jakarta.transaction.Transactional;
+import org.sopt.member.domain.Member;
+import org.sopt.member.exception.MemberErrorCode;
+import org.sopt.member.exception.MemberException;
+import org.sopt.member.repository.MemberRepository;
 import org.sopt.post.domain.Category;
 import org.sopt.post.domain.Post;
 import org.sopt.common.exception.BusinessException;
@@ -14,6 +18,7 @@ import org.sopt.common.exception.CommonErrorCode;
 import org.sopt.post.exception.PostErrorCode;
 import org.sopt.post.exception.PostException;
 import org.sopt.post.service.dto.CategoryResponse;
+import org.sopt.post.service.dto.PostCreateRequest;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.sopt.post.service.dto.PostPageResponse;
@@ -30,15 +35,23 @@ public class PostService {
 
     // Spring Data JPA 저장소 주입
     private final PostRepository repository;
+    private final MemberRepository memberRepository;
 
-    public PostService(PostRepository repository) {
+    public PostService(PostRepository repository, MemberRepository memberRepository) {
         this.repository = Objects.requireNonNull(repository);
+        this.memberRepository = Objects.requireNonNull(memberRepository);
     }
 
-    // 게시글 작성성
+    // 게시글 작성
     // synchronized의 자세한 원리 더 공부하기...
-    public synchronized PostResponse create(PostRequest request) {
-        requireRequest(request);
+    @Transactional
+    public synchronized PostResponse create(PostCreateRequest request) {
+        if (request == null || request.memberId() == null || request.memberId() <= 0) {
+            throw new PostException(PostErrorCode.INVALID_POST, "작성자 ID는 양수여야 합니다.");
+        }
+        // 요청한 회원이 실제로 존재할 때만 작성자로 연결
+        Member author = memberRepository.findById(request.memberId())
+                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
         Category category = Category.from(request.category());
 
         // 최대 게시글 수 확인
@@ -49,7 +62,7 @@ public class PostService {
 
         // 입력값을 검증하여 게시글 생성
         Post post = Post.create(request.title(), request.content(),
-                category, LocalDateTime.now());
+                category, author, LocalDateTime.now());
         // 저장소에서 발급한 ID가 포함된 게시글 반환
         Post savedPost = repository.save(post);
 
@@ -59,6 +72,8 @@ public class PostService {
 
     // 게시글 목록 조회
     // 유효성 검사 controller 에서 할까 고민했지만, service에 엉뚱한 값이 예상 못 한 경로로 들어오는 것을 막기 위해 보수적으로 service에서 검증하기로 결정
+    // 지연 로딩된 작성자 이름을 응답으로 변환할 때까지 영속성 컨텍스트 유지
+    @Transactional
     public synchronized PostPageResponse findAll(int page, int size, String category) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST,
@@ -93,6 +108,7 @@ public class PostService {
     }
 
     // 게시글 단건 조회
+    @Transactional
     public synchronized PostResponse findById(long id) {
         Post post = getPost(id);
 

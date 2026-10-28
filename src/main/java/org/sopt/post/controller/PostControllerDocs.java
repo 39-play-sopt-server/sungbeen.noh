@@ -16,7 +16,7 @@ import org.sopt.post.service.dto.PostResponse;
 import org.springframework.http.ResponseEntity;
 
 // Swagger 문서 설명과 실제 요청 처리 코드 분리
-@Tag(name = "게시글", description = "메모리 기반 게시글 API")
+@Tag(name = "게시글", description = "게시글 API")
 @ApiResponse(
         responseCode = "500", description = "서버 내부 오류",
         content = @Content(schema = @Schema(implementation = RestResponse.class)))

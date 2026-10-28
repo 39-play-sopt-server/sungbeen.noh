@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import jakarta.transaction.Transactional;
 import org.sopt.post.domain.Category;
 import org.sopt.post.domain.Post;
 import org.sopt.common.exception.BusinessException;
@@ -16,23 +17,19 @@ import org.sopt.post.service.dto.CategoryResponse;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.sopt.post.service.dto.PostPageResponse;
-import org.sopt.post.service.port.PostRepository;
+import org.sopt.post.repository.PostRepository;
 import org.springframework.stereotype.Service;
 
-// 의존하고 있는 객체를 추상화 하여 PostService가 PostRepository 구현체에 직접 의존하지 않도록 설계
+// 게시글 처리와 JPA 저장소 호출 담당
 @Service
-public final class PostService {
+public class PostService {
 
     // 모든 Service 객체에서 같은 작성 한도를 사용하도록 static final 지정
     private static final int MAX_POST_COUNT = 100;
     private static final int MAX_PAGE_SIZE = 100;
 
-    // 저장 방식을 바꿀 수 있도록 PostRepository 인터페이스 사용
+    // Spring Data JPA 저장소 주입
     private final PostRepository repository;
-
-    // 마지막으로 발급한 게시글 ID
-    // TODO DB에서 ID 직접 생성시 삭제하기
-    private long sequence;
 
     public PostService(PostRepository repository) {
         this.repository = Objects.requireNonNull(repository);
@@ -50,13 +47,14 @@ public final class PostService {
                     "게시글은 최대 " + MAX_POST_COUNT + "개까지 작성할 수 있습니다.");
         }
 
-        // 새 ID를 발급하고 입력값을 검증하여 게시글 생성
-        Post post = Post.create(++sequence, request.title(), request.content(),
+        // 입력값을 검증하여 게시글 생성
+        Post post = Post.create(request.title(), request.content(),
                 category, LocalDateTime.now());
-        repository.save(post);
+        // 저장소에서 발급한 ID가 포함된 게시글 반환
+        Post savedPost = repository.save(post);
 
         // 저장된 게시글을 전달용 데이터로 변환
-        return PostResponse.from(post);
+        return PostResponse.from(savedPost);
     }
 
     // 게시글 목록 조회
@@ -100,28 +98,28 @@ public final class PostService {
 
         // 상세 조회에서만 조회수 증가 후 저장
         Post viewedPost = post.increaseViewCount();
-        repository.save(viewedPost);
-        return PostResponse.from(viewedPost);
+        Post savedPost = repository.save(viewedPost);
+        return PostResponse.from(savedPost);
     }
 
     // 게시글 수정
-    public synchronized PostResponse update(long id, PostRequest request) {
+    @Transactional
+    public  PostResponse update(long id, PostRequest request) {
         requireRequest(request);
         Category category = Category.from(request.category());
 
         // 수정할 게시글 조회, 새 입력값과 현재 시각으로 게시글 생성
         Post updatedPost = getPost(id).update(request.title(), request.content(), category, LocalDateTime.now());
-        repository.save(updatedPost);
+        Post savedPost = repository.save(updatedPost);
 
-        return PostResponse.from(updatedPost);
+        return PostResponse.from(savedPost);
     }
 
     // 게시글 삭제
     public synchronized void delete(long id) {
-        // 삭제된 게시글이 없으면 예외 발생
-        if (!repository.deleteById(id)) {
-            throw new PostException(PostErrorCode.POST_NOT_FOUND);
-        }
+        // 존재 여부 확인 후 삭제 / 없는 게시글은 공통 조회 메서드에서 예외 발생
+        Post post = getPost(id);
+        repository.delete(post);
     }
 
     // 카테고리 목록 조회

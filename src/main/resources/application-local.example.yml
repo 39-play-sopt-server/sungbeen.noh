@@ -1,0 +1,6 @@
+# application-local.yml로 복사 후 본인 DB 정보 입력
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/assignment
+    username: your_mysql_username
+    password: your_mysql_password

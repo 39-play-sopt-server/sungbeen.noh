@@ -2,6 +2,8 @@ package org.sopt.post.domain;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +15,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Table;
 import org.sopt.common.domain.BaseEntity;
 import org.sopt.member.domain.Member;
@@ -45,6 +50,17 @@ public class Post extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "member_id", nullable = false)
     private Member author;
+
+    // 한 회원이 여러 게시글에, 한 게시글에 여러 회원이 좋아요를 누를 수 있어 연결 테이블 사용
+    // 같은 회원과 게시글의 조합은 DB에서도 중복 저장되지 않도록 제한
+    @ManyToMany
+    @JoinTable(name = "post_likes", joinColumns = @JoinColumn(name = "post_id"),
+            inverseJoinColumns = @JoinColumn(name = "member_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"post_id", "member_id"}))
+    private Set<Member> likedMembers = new HashSet<>();
+
+    @Column(nullable = false)
+    private long likeCount;
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
@@ -97,6 +113,26 @@ public class Post extends BaseEntity {
     // 작성·수정 시각은 유지하고 조회수만 증가
     public void increaseViewCount() {
         this.viewCount++;
+    }
+
+    // Set에 이미 회원이 있으면 add가 false를 반환 / 중복 좋아요 방지
+    public void addLike(Member member) {
+        if (!likedMembers.add(member)) {
+            throw new PostException(PostErrorCode.ALREADY_LIKED);
+        }
+        likeCount++;
+    }
+
+    // 좋아요를 누른 회원만 취소 가능 / 관계와 개수를 함께 변경
+    public void removeLike(Member member) {
+        if (!likedMembers.remove(member)) {
+            throw new PostException(PostErrorCode.LIKE_NOT_FOUND);
+        }
+        likeCount--;
+    }
+
+    public long getLikeCount() {
+        return likeCount;
     }
 
     // 제목과 내용의 입력값 확인

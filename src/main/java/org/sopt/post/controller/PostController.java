@@ -67,6 +67,24 @@ public final class PostController implements PostControllerDocs {
         return ResponseEntity.ok(RestResponse.success("게시글을 조회했습니다.", post));
     }
 
+    // 회원 ID를 전달받아 좋아요 추가
+    @Override
+    @PostMapping("/{id}/likes")
+    public ResponseEntity<RestResponse<Void>> addLike(@PathVariable("id") long id,
+                                                       @RequestParam("memberId") long memberId) {
+        service.addLike(id, memberId);
+        return ResponseEntity.ok(RestResponse.success("좋아요를 눌렀습니다.", null));
+    }
+
+    // 좋아요 취소
+    @Override
+    @DeleteMapping("/{id}/likes")
+    public ResponseEntity<RestResponse<Void>> removeLike(@PathVariable("id") long id,
+                                                          @RequestParam("memberId") long memberId) {
+        service.removeLike(id, memberId);
+        return ResponseEntity.ok(RestResponse.success("좋아요를 취소했습니다.", null));
+    }
+
     // 게시글 수정 요청
     @Override
     @PutMapping("/{id}")

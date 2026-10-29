@@ -66,6 +66,22 @@ public interface PostControllerDocs {
     ResponseEntity<RestResponse<PostResponse>> findById(
             @Parameter(description = "게시글 ID", example = "1") long id);
 
+    @Operation(summary = "좋아요", description = "회원 ID를 전달해 게시글에 좋아요를 누릅니다.")
+    @ApiResponse(responseCode = "200", description = "좋아요 성공", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "404", description = "회원 또는 게시글이 없음",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    @ApiResponse(responseCode = "409", description = "이미 좋아요를 누른 게시글",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    ResponseEntity<RestResponse<Void>> addLike(long id, long memberId);
+
+    @Operation(summary = "좋아요 취소", description = "회원 ID를 전달해 좋아요를 취소합니다.")
+    @ApiResponse(responseCode = "200", description = "좋아요 취소 성공", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "404", description = "회원 또는 게시글이 없음",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    @ApiResponse(responseCode = "409", description = "좋아요를 누르지 않은 게시글",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    ResponseEntity<RestResponse<Void>> removeLike(long id, long memberId);
+
     @Operation(summary = "게시글 수정",
             description = "제목·본문·카테고리를 수정하며, 기존 조회수와 작성 시각을 유지합니다.")
     @ApiResponse(

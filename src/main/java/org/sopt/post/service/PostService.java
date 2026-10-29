@@ -46,14 +46,13 @@ public class PostService {
     }
 
     // 게시글 작성
-    // synchronized의 자세한 원리 더 공부하기...
     @Transactional
-    public synchronized PostResponse create(PostCreateRequest request) {
+    public PostResponse create(PostCreateRequest request) {
         if (request == null || request.memberId() == null || request.memberId() <= 0) {
             throw new PostException(PostErrorCode.INVALID_POST, "작성자 ID는 양수여야 합니다.");
         }
-        // 요청한 회원이 실제로 존재할 때만 작성자로 연결
-        Member author = memberRepository.findById(request.memberId())
+        // 회원을 잠금 조회해 삭제와 게시글 생성이 동시에 진행되는 상황 방지
+        Member author = memberRepository.findByIdForUpdate(request.memberId())
                 .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
         Category category = Category.from(request.category());
 
@@ -77,7 +76,7 @@ public class PostService {
     // 유효성 검사 controller 에서 할까 고민했지만, service에 엉뚱한 값이 예상 못 한 경로로 들어오는 것을 막기 위해 보수적으로 service에서 검증하기로 결정
     // 지연 로딩된 작성자 이름을 응답으로 변환할 때까지 영속성 컨텍스트 유지
     @Transactional
-    public synchronized PostPageResponse findAll(int page, int size, String category, Long memberId, String title) {
+    public PostPageResponse findAll(int page, int size, String category, Long memberId, String title) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST,
                     "page는 0 이상, size는 1 이상 " + MAX_PAGE_SIZE + " 이하여야 합니다.");
@@ -106,8 +105,8 @@ public class PostService {
 
     // 게시글 단건 조회
     @Transactional
-    public synchronized PostResponse findById(long id) {
-        Post post = getPost(id);
+    public PostResponse findById(long id) {
+        Post post = getPostForUpdate(id);
 
         // 상세 조회에서만 조회수 증가
         // 트랜잭션 안에서 관리 중인 엔티티를 변경하면 JPA가 변경 내용을 반영
@@ -122,17 +121,47 @@ public class PostService {
         Category category = Category.from(request.category());
 
         // 조회한 게시글의 내용과 수정 시각 변경
-        Post post = getPost(id);
+        Post post = getPostForUpdate(id);
         post.update(request.title(), request.content(), category, LocalDateTime.now());
 
         return PostResponse.from(post);
     }
 
     // 게시글 삭제
-    public synchronized void delete(long id) {
-        // 존재 여부 확인 후 삭제 / 없는 게시글은 공통 조회 메서드에서 예외 발생
-        Post post = getPost(id);
+    @Transactional
+    public void delete(long id) {
+        // 게시글을 잠금 조회한 뒤 삭제 / 존재하지 않으면 예외 발생
+        Post post = getPostForUpdate(id);
         repository.delete(post);
+    }
+
+    // 좋아요 추가·취소는 회원 → 게시글 순서로 잠금
+    // 같은 순서를 사용해 잠금 순서가 뒤집혀 서로 기다리는 상황을 줄임
+    @Transactional
+    public void addLike(long postId, long memberId) {
+        Member member = getMemberForLike(memberId);
+        Post post = getPostForUpdate(postId);
+        post.addLike(member);
+    }
+
+    @Transactional
+    public void removeLike(long postId, long memberId) {
+        Member member = getMemberForLike(memberId);
+        Post post = getPostForUpdate(postId);
+        post.removeLike(member);
+    }
+
+    private Member getMemberForLike(long memberId) {
+        if (memberId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "회원 ID는 양수여야 합니다.");
+        }
+        return memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private Post getPostForUpdate(long id) {
+        return repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new PostException(PostErrorCode.POST_NOT_FOUND));
     }
 
     // 카테고리 목록 조회

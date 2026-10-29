@@ -23,7 +23,7 @@ public interface MemberControllerDocs {
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
     ResponseEntity<RestResponse<MemberResponse>> create(MemberCreateRequest request);
 
-    @Operation(summary = "회원 삭제", description = "작성한 게시글이 있는 회원은 삭제할 수 없습니다.")
+    @Operation(summary = "회원 삭제", description = "작성한 게시글이 있으면 삭제를 거부하며, 회원 삭제 시 좋아요를 함께 정리합니다.")
     @ApiResponse(responseCode = "200", description = "회원 삭제 성공", useReturnTypeSchema = true)
     @ApiResponse(responseCode = "404", description = "존재하지 않는 회원",
             content = @Content(schema = @Schema(implementation = RestResponse.class)))

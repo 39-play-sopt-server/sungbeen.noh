@@ -39,7 +39,7 @@ public interface PostControllerDocs {
     ResponseEntity<RestResponse<PostResponse>> create(PostCreateRequest request);
 
     @Operation(summary = "게시글 목록 조회",
-            description = "카테고리 필터 후 생성일 최신순으로 페이지를 반환합니다. 생성일이 같으면 ID 내림차순입니다. 목록 조회는 조회수를 올리지 않습니다. 범위를 벗어난 페이지는 빈 목록입니다.")
+            description = "작성자 ID, 카테고리, 제목을 선택하여 검색하고 생성일 최신순으로 페이지를 반환합니다. 생성일이 같으면 ID 내림차순입니다. 목록 조회는 조회수를 올리지 않습니다. 범위를 벗어난 페이지는 빈 목록입니다.")
     @ApiResponse(
             responseCode = "200", description = "목록 조회 성공", useReturnTypeSchema = true)
     @ApiResponse(
@@ -49,7 +49,9 @@ public interface PostControllerDocs {
             @Parameter(description = "0부터 시작하는 페이지 번호, 기본값 0", example = "0") int page,
             @Parameter(description = "페이지당 개수, 1~100, 기본값 10", example = "10") int size,
             @Parameter(description = "FREE, QUESTION, NOTICE 중 선택, 생략 시 전체 조회", example = "QUESTION")
-            String category);
+            String category,
+            @Parameter(description = "작성자 회원 ID", example = "1") Long memberId,
+            @Parameter(description = "제목에 포함된 검색어", example = "JPA") String title);
 
     @Operation(summary = "게시글 상세 조회",
             description = "상세 조회마다 조회수가 1 증가합니다. 작성·수정 시각은 유지됩니다.")

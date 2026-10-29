@@ -51,9 +51,11 @@ public final class PostController implements PostControllerDocs {
     public ResponseEntity<RestResponse<PostPageResponse>> findAll(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size,
-            @RequestParam(name = "category", required = false) String category) {
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "memberId", required = false) Long memberId,
+            @RequestParam(name = "title", required = false) String title) {
         // 게시글 목록 조회 후 성공 응답 생성
-        PostPageResponse posts = service.findAll(page, size, category);
+        PostPageResponse posts = service.findAll(page, size, category, memberId, title);
         return ResponseEntity.ok(RestResponse.success("게시글 목록을 조회했습니다.", posts));
     }
 

@@ -77,7 +77,7 @@ public class PostService {
     // 유효성 검사 controller 에서 할까 고민했지만, service에 엉뚱한 값이 예상 못 한 경로로 들어오는 것을 막기 위해 보수적으로 service에서 검증하기로 결정
     // 지연 로딩된 작성자 이름을 응답으로 변환할 때까지 영속성 컨텍스트 유지
     @Transactional
-    public synchronized PostPageResponse findAll(int page, int size, String category) {
+    public synchronized PostPageResponse findAll(int page, int size, String category, Long memberId, String title) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST,
                     "page는 0 이상, size는 1 이상 " + MAX_PAGE_SIZE + " 이하여야 합니다.");
@@ -91,13 +91,16 @@ public class PostService {
         // 페이지 번호와 크기, 정렬 기준을 DB 조회에 전달
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        // 전체 데이터를 가져와 자르는 대신 DB에서 필터와 페이지 조회
-        Page<Post> posts;
-        if (category == null) {
-            posts = repository.findAll(pageable);
-        } else {
-            posts = repository.findByCategory(Category.from(category), pageable);
+        if (memberId != null && memberId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "작성자 ID는 양수여야 합니다.");
         }
+        if (title != null && title.isBlank()) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "검색할 제목을 입력해주세요.");
+        }
+
+        // 입력하지 않은 조건은 제외하고 DB에서 검색
+        Category selectedCategory = category == null ? null : Category.from(category);
+        Page<Post> posts = repository.search(memberId, selectedCategory, title, pageable);
         return PostPageResponse.from(posts);
     }
 

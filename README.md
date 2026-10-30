@@ -13,13 +13,13 @@
 
 | 동료 | 레벨 | Inline comments | Reviews |
 | --- | --- | --- | --- |
+| [@KateteDeveloper](https://github.com/KateteDeveloper) | LV3 | 11 | 3 |
 | [@mindolii](https://github.com/mindolii) | LV3 | 11 | 2 |
-| [@KateteDeveloper](https://github.com/KateteDeveloper) | LV2 | 6 | 2 |
 | [@Kyoung-M1N](https://github.com/Kyoung-M1N) | LV2 | 5 | 6 |
 | [@leseok](https://github.com/leseok) | LV2 | 5 | 2 |
 | [@sssthnnhee](https://github.com/sssthnnhee) | LV2 | 5 | 2 |
 
-집계 데이터 확인 시각(변경 시 저장): 2026-10-22T12:05:38.294Z
+집계 데이터 확인 시각(변경 시 저장): 2026-10-30T06:01:12.604Z
 
 </details>
 <!-- REVIEW-ZOO:END -->

@@ -22,6 +22,11 @@ dependencies {
     // MySQL 드라이버
     runtimeOnly 'com.mysql:mysql-connector-j'
 
+    // Querydsl 쿼리 실행
+    implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.4.0'
+    annotationProcessor 'io.github.openfeign.querydsl:querydsl-apt:7.4.0:jpa'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
     // Spring Data JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 

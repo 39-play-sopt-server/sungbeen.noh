@@ -2,6 +2,8 @@ package org.sopt.post.domain;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,14 +12,22 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Table;
+import org.sopt.common.domain.BaseEntity;
+import org.sopt.member.domain.Member;
 import org.sopt.post.exception.PostErrorCode;
 import org.sopt.post.exception.PostException;
 
 // 게시글 데이터와 검증 규칙 관리 / JPA 테이블 매핑
 @Entity
 @Table(name = "posts")
-public class Post {
+public class Post extends BaseEntity {
 
     // 저장 전에는 null, 저장 후에는 저장소에서 발급한 ID 사용
     @Id
@@ -36,8 +46,21 @@ public class Post {
     @Column(nullable = false)
     private Category category;
 
+    // 여러 게시글이 한 명의 회원을 작성자로 참조 / 필요할 때 작성자 조회
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member author;
+
+    // 한 회원이 여러 게시글에, 한 게시글에 여러 회원이 좋아요를 누를 수 있어 연결 테이블 사용
+    // 같은 회원과 게시글의 조합은 DB에서도 중복 저장되지 않도록 제한
+    @ManyToMany
+    @JoinTable(name = "post_likes", joinColumns = @JoinColumn(name = "post_id"),
+            inverseJoinColumns = @JoinColumn(name = "member_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"post_id", "member_id"}))
+    private Set<Member> likedMembers = new HashSet<>();
+
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private long likeCount;
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
@@ -49,41 +72,67 @@ public class Post {
     protected Post() {
     }
 
-    private Post(Long id, String title, String content, Category category,
-                 LocalDateTime createdAt, LocalDateTime updatedAt, long viewCount) {
-        // 게시글 ID와 필수 입력값 확인
-        if (id != null && id <= 0) {
-            throw new PostException(PostErrorCode.INVALID_POST, "게시글 ID는 양수여야 합니다.");
-        }
+    private Post(String title, String content, Category category,
+                 Member author, LocalDateTime now) {
+        // 게시글 필수 입력값 확인
         validateText(title, "제목");
         validateText(content, "본문");
         if (category == null) {
             throw new PostException(PostErrorCode.INVALID_POST, "카테고리는 필수입니다.");
         }
 
-        this.id = id;
         this.title = title;
         this.content = content;
         this.category = category;
-        this.createdAt = Objects.requireNonNull(createdAt);
-        this.updatedAt = Objects.requireNonNull(updatedAt);
-        this.viewCount = viewCount;
+        this.author = Objects.requireNonNull(author);
+        this.updatedAt = Objects.requireNonNull(now);
+        this.viewCount = 0;
     }
 
     // 게시글 생성
     public static Post create(String title, String content,
-                              Category category, LocalDateTime now) {
-        return new Post(null, title, content, category, now, now, 0);
+                              Category category, Member author, LocalDateTime now) {
+        return new Post(title, content, category, author, now);
     }
 
-    // 수정한 게시글을 새 객체로 반환
-    public Post update(String title, String content, Category category, LocalDateTime now) {
-        return new Post(id, title, content, category, createdAt, now, viewCount);
+    // 입력값을 검증한 뒤 기존 게시글의 내용과 수정 시각 변경
+    public void update(String title, String content, Category category, LocalDateTime now) {
+        validateText(title, "제목");
+        validateText(content, "본문");
+        if (category == null) {
+            throw new PostException(PostErrorCode.INVALID_POST, "카테고리는 필수입니다.");
+        }
+        Objects.requireNonNull(now);
+
+        this.title = title;
+        this.content = content;
+        this.category = category;
+        this.updatedAt = now;
     }
 
-    // 작성·수정 시각을 유지하고 조회수가 증가한 게시글 반환
-    public Post increaseViewCount() {
-        return new Post(id, title, content, category, createdAt, updatedAt, viewCount + 1);
+    // 작성·수정 시각은 유지하고 조회수만 증가
+    public void increaseViewCount() {
+        this.viewCount++;
+    }
+
+    // Set에 이미 회원이 있으면 add가 false를 반환 / 중복 좋아요 방지
+    public void addLike(Member member) {
+        if (!likedMembers.add(member)) {
+            throw new PostException(PostErrorCode.ALREADY_LIKED);
+        }
+        likeCount++;
+    }
+
+    // 좋아요를 누른 회원만 취소 가능 / 관계와 개수를 함께 변경
+    public void removeLike(Member member) {
+        if (!likedMembers.remove(member)) {
+            throw new PostException(PostErrorCode.LIKE_NOT_FOUND);
+        }
+        likeCount--;
+    }
+
+    public long getLikeCount() {
+        return likeCount;
     }
 
     // 제목과 내용의 입력값 확인
@@ -114,9 +163,9 @@ public class Post {
         return category;
     }
 
-    // 작성 시각 조회
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    // 작성자 조회
+    public Member getAuthor() {
+        return author;
     }
 
     // 수정 시각 조회

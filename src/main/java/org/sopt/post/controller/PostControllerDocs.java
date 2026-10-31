@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.sopt.common.response.RestResponse;
 import org.sopt.post.service.dto.CategoryResponse;
 import org.sopt.post.service.dto.PostPageResponse;
+import org.sopt.post.service.dto.PostCreateRequest;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ import org.springframework.http.ResponseEntity;
 public interface PostControllerDocs {
 
     @Operation(summary = "게시글 작성",
-            description = "제목·본문은 필수이며, category는 FREE, QUESTION, NOTICE 중 하나입니다. 최초 조회수는 0입니다.")
+            description = "작성자 회원 ID, 제목·본문은 필수이며, category는 FREE, QUESTION, NOTICE 중 하나입니다. 최초 조회수는 0입니다.")
     @ApiResponse(
             responseCode = "201", description = "작성 성공", useReturnTypeSchema = true)
     @ApiResponse(
@@ -32,10 +33,13 @@ public interface PostControllerDocs {
     @ApiResponse(
             responseCode = "409", description = "최대 게시글 수 초과",
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
-    ResponseEntity<RestResponse<PostResponse>> create(PostRequest request);
+    @ApiResponse(
+            responseCode = "404", description = "존재하지 않는 작성자",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    ResponseEntity<RestResponse<PostResponse>> create(PostCreateRequest request);
 
     @Operation(summary = "게시글 목록 조회",
-            description = "카테고리 필터 후 ID 오름차순으로 페이지를 반환합니다. 목록 조회는 조회수를 올리지 않습니다. 범위를 벗어난 페이지는 빈 목록입니다.")
+            description = "작성자 ID, 카테고리, 제목을 선택하여 검색하고 생성일 최신순으로 페이지를 반환합니다. 생성일이 같으면 ID 내림차순입니다. 목록 조회는 조회수를 올리지 않습니다. 범위를 벗어난 페이지는 빈 목록입니다.")
     @ApiResponse(
             responseCode = "200", description = "목록 조회 성공", useReturnTypeSchema = true)
     @ApiResponse(
@@ -45,7 +49,9 @@ public interface PostControllerDocs {
             @Parameter(description = "0부터 시작하는 페이지 번호, 기본값 0", example = "0") int page,
             @Parameter(description = "페이지당 개수, 1~100, 기본값 10", example = "10") int size,
             @Parameter(description = "FREE, QUESTION, NOTICE 중 선택, 생략 시 전체 조회", example = "QUESTION")
-            String category);
+            String category,
+            @Parameter(description = "작성자 회원 ID", example = "1") Long memberId,
+            @Parameter(description = "제목에 포함된 검색어", example = "JPA") String title);
 
     @Operation(summary = "게시글 상세 조회",
             description = "상세 조회마다 조회수가 1 증가합니다. 작성·수정 시각은 유지됩니다.")
@@ -59,6 +65,22 @@ public interface PostControllerDocs {
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
     ResponseEntity<RestResponse<PostResponse>> findById(
             @Parameter(description = "게시글 ID", example = "1") long id);
+
+    @Operation(summary = "좋아요", description = "회원 ID를 전달해 게시글에 좋아요를 누릅니다.")
+    @ApiResponse(responseCode = "200", description = "좋아요 성공", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "404", description = "회원 또는 게시글이 없음",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    @ApiResponse(responseCode = "409", description = "이미 좋아요를 누른 게시글",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    ResponseEntity<RestResponse<Void>> addLike(long id, long memberId);
+
+    @Operation(summary = "좋아요 취소", description = "회원 ID를 전달해 좋아요를 취소합니다.")
+    @ApiResponse(responseCode = "200", description = "좋아요 취소 성공", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "404", description = "회원 또는 게시글이 없음",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    @ApiResponse(responseCode = "409", description = "좋아요를 누르지 않은 게시글",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    ResponseEntity<RestResponse<Void>> removeLike(long id, long memberId);
 
     @Operation(summary = "게시글 수정",
             description = "제목·본문·카테고리를 수정하며, 기존 조회수와 작성 시각을 유지합니다.")

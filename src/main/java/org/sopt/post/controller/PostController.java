@@ -6,6 +6,7 @@ import java.util.Objects;
 import org.sopt.common.response.RestResponse;
 import org.sopt.post.service.PostService;
 import org.sopt.post.service.dto.CategoryResponse;
+import org.sopt.post.service.dto.PostCreateRequest;
 import org.sopt.post.service.dto.PostRequest;
 import org.sopt.post.service.dto.PostResponse;
 import org.sopt.post.service.dto.PostPageResponse;
@@ -37,7 +38,7 @@ public final class PostController implements PostControllerDocs {
     // 게시글 작성 요청
     @Override
     @PostMapping
-    public ResponseEntity<RestResponse<PostResponse>> create(@RequestBody PostRequest request) {
+    public ResponseEntity<RestResponse<PostResponse>> create(@RequestBody PostCreateRequest request) {
         PostResponse post = service.create(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -50,9 +51,11 @@ public final class PostController implements PostControllerDocs {
     public ResponseEntity<RestResponse<PostPageResponse>> findAll(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size,
-            @RequestParam(name = "category", required = false) String category) {
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "memberId", required = false) Long memberId,
+            @RequestParam(name = "title", required = false) String title) {
         // 게시글 목록 조회 후 성공 응답 생성
-        PostPageResponse posts = service.findAll(page, size, category);
+        PostPageResponse posts = service.findAll(page, size, category, memberId, title);
         return ResponseEntity.ok(RestResponse.success("게시글 목록을 조회했습니다.", posts));
     }
 
@@ -62,6 +65,24 @@ public final class PostController implements PostControllerDocs {
     public ResponseEntity<RestResponse<PostResponse>> findById(@PathVariable("id") long id) {
         PostResponse post = service.findById(id);
         return ResponseEntity.ok(RestResponse.success("게시글을 조회했습니다.", post));
+    }
+
+    // 회원 ID를 전달받아 좋아요 추가
+    @Override
+    @PostMapping("/{id}/likes")
+    public ResponseEntity<RestResponse<Void>> addLike(@PathVariable("id") long id,
+                                                       @RequestParam("memberId") long memberId) {
+        service.addLike(id, memberId);
+        return ResponseEntity.ok(RestResponse.success("좋아요를 눌렀습니다.", null));
+    }
+
+    // 좋아요 취소
+    @Override
+    @DeleteMapping("/{id}/likes")
+    public ResponseEntity<RestResponse<Void>> removeLike(@PathVariable("id") long id,
+                                                          @RequestParam("memberId") long memberId) {
+        service.removeLike(id, memberId);
+        return ResponseEntity.ok(RestResponse.success("좋아요를 취소했습니다.", null));
     }
 
     // 게시글 수정 요청

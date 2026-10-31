@@ -7,7 +7,9 @@ import org.springframework.http.HttpStatus;
 public enum PostErrorCode implements ErrorCode {
     INVALID_POST(HttpStatus.BAD_REQUEST, "게시글 입력값이 올바르지 않습니다."),
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 게시글입니다."),
-    POST_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "게시글 작성 한도를 초과했습니다.");
+    POST_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "게시글 작성 한도를 초과했습니다."),
+    ALREADY_LIKED(HttpStatus.CONFLICT, "이미 좋아요를 누른 게시글입니다."),
+    LIKE_NOT_FOUND(HttpStatus.CONFLICT, "좋아요를 누르지 않은 게시글입니다.");
 
     private final HttpStatus status;
     private final String message;

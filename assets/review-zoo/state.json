@@ -1,7 +1,7 @@
 {
   "repository": "39-play-sopt-server/sungbeen.noh",
   "author": "SungKong00",
-  "lastSyncedAt": "2026-10-31T21:43:40.371Z",
+  "lastSyncedAt": "2026-11-01T17:58:38.797Z",
   "rounds": [
     {
       "number": 1,
@@ -20,22 +20,22 @@
           "reviews": 3
         },
         {
-          "id": 67535039,
-          "username": "Kyoung-M1N",
-          "comments": 5,
-          "reviews": 6
-        },
-        {
           "id": 134057345,
           "username": "leseok",
-          "comments": 5,
-          "reviews": 2
+          "comments": 7,
+          "reviews": 3
         },
         {
           "id": 128691940,
           "username": "sssthnnhee",
+          "comments": 7,
+          "reviews": 3
+        },
+        {
+          "id": 67535039,
+          "username": "Kyoung-M1N",
           "comments": 5,
-          "reviews": 2
+          "reviews": 6
         }
       ]
     }

@@ -15,11 +15,11 @@
 | --- | --- | --- | --- |
 | [@mindolii](https://github.com/mindolii) | LV3 | 14 | 3 |
 | [@KateteDeveloper](https://github.com/KateteDeveloper) | LV3 | 11 | 3 |
+| [@leseok](https://github.com/leseok) | LV2 | 7 | 3 |
+| [@sssthnnhee](https://github.com/sssthnnhee) | LV2 | 7 | 3 |
 | [@Kyoung-M1N](https://github.com/Kyoung-M1N) | LV2 | 5 | 6 |
-| [@leseok](https://github.com/leseok) | LV2 | 5 | 2 |
-| [@sssthnnhee](https://github.com/sssthnnhee) | LV2 | 5 | 2 |
 
-집계 데이터 확인 시각(변경 시 저장): 2026-10-31T21:43:40.371Z
+집계 데이터 확인 시각(변경 시 저장): 2026-11-01T17:58:38.797Z
 
 </details>
 <!-- REVIEW-ZOO:END -->

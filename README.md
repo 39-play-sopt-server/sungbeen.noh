@@ -45,3 +45,11 @@
 - [세팅·자동화·집계 규칙](docs/review-zoo.md) · [리소스 라이선스](assets/review-zoo/CREDITS.md)
 
 </details>
+
+### 실행 및 배포 설정
+
+로컬에서는 `application-local.example.yml`을 `application-local.yml`로 복사하고 로컬 MySQL 접속 정보를 설정합니다. 기본 프로필은 `local`입니다.
+
+배포에서는 `prod` 프로필과 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` 환경변수를 사용합니다. GitHub Actions에서 ARM64 이미지를 빌드하고 EC2의 Docker Compose로 Spring Boot와 Nginx를 실행합니다. Actions Secrets에는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`가 필요하고 Variables에는 `DEPLOY_HOST`, `DEPLOY_USER`가 필요합니다. `CORS_ALLOWED_ORIGINS` 변수로 허용할 출처를 쉼표로 구분해 변경할 수 있습니다. 값을 변경한 뒤 워크플로를 수동 실행해 서버에 반영합니다.
+
+EC2에는 Docker와 Compose가 설치되어 있어야 하며 `/home/ubuntu/assignment`의 Compose 설정과 `/home/ubuntu/.config/assignment/compose.env`를 사용합니다. 인증서는 호스트의 Certbot이 `/var/www/letsencrypt`를 통해 갱신하고 갱신 후 Nginx 컨테이너를 다시 불러옵니다. 배포 후 API가 응답하지 않으면 이전 이미지와 환경변수로 복구를 시도합니다.

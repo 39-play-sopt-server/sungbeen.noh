@@ -1,0 +1,25 @@
+services:
+  app:
+    image: assignment:current
+    platform: linux/arm64
+    restart: unless-stopped
+    env_file:
+      - /home/ubuntu/.config/assignment/compose.env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    expose:
+      - "8080"
+
+  nginx:
+    image: nginx:stable
+    platform: linux/arm64
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/letsencrypt:/var/www/letsencrypt:ro

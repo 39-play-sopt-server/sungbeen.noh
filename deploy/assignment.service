@@ -1,0 +1,16 @@
+[Unit]
+Description=Assignment Spring Boot application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/assignment
+EnvironmentFile=/home/ubuntu/.config/assignment/production.env
+ExecStart=/usr/bin/java -jar /home/ubuntu/assignment/assignment.jar --spring.profiles.active=prod --server.address=127.0.0.1
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

@@ -45,3 +45,9 @@
 - [세팅·자동화·집계 규칙](docs/review-zoo.md) · [리소스 라이선스](assets/review-zoo/CREDITS.md)
 
 </details>
+
+### 실행 및 배포 설정
+
+로컬에서는 `application-local.example.yml`을 `application-local.yml`로 복사하고 로컬 MySQL 접속 정보를 설정합니다. 기본 프로필은 `local`입니다.
+
+배포에서는 `prod` 프로필과 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` 환경변수를 사용합니다. `main`의 애플리케이션 변경은 GitHub Actions에서 빌드 후 EC2에 배포하며, systemd가 환경변수 파일을 읽어 애플리케이션을 실행합니다. Actions Secrets에는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`가 필요하고 Variables에는 `DEPLOY_HOST`, `DEPLOY_USER`가 필요합니다. 환경변수를 바꾼 뒤에는 워크플로를 수동 실행해 서버에 반영합니다. 배포 실패 시 직전 JAR과 환경변수로 복구를 시도합니다.

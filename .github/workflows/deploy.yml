@@ -1,0 +1,100 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'deploy/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'deploy/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assignment-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build and test
+        run: ./gradlew build --no-daemon
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: assignment-jar
+          path: build/libs/assignment-1.0-SNAPSHOT.jar
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: assignment-jar
+      - name: Prepare SSH and server environment
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          names = {'SPRING_DATASOURCE_URL': 'DB_URL', 'SPRING_DATASOURCE_USERNAME': 'DB_USERNAME', 'SPRING_DATASOURCE_PASSWORD': 'DB_PASSWORD'}
+          lines = []
+          for target, source in names.items():
+              value = os.environ[source]
+              if not value or '\n' in value or '\r' in value:
+                  raise SystemExit(f'{source} is missing or contains a newline')
+              value = value.replace('\\', '\\\\').replace('"', '\\"')
+              lines.append(f'{target}="{value}"')
+          Path('production.env').write_text('\n'.join(lines) + '\n')
+          PY
+      - name: Deploy and verify
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER"
+          target="$DEPLOY_USER@$DEPLOY_HOST"
+          scp -i ~/.ssh/id_ed25519 assignment-1.0-SNAPSHOT.jar "$target:/home/ubuntu/assignment/assignment.jar.next"
+          scp -i ~/.ssh/id_ed25519 production.env "$target:/home/ubuntu/.config/assignment/production.env.next"
+          ssh -i ~/.ssh/id_ed25519 "$target" 'bash -s' < deploy/release.sh
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 https://sopt-39-sungbeen.p-e.kr/api/v1/posts >/dev/null

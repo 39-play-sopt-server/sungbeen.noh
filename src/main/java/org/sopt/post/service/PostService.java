@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 import jakarta.transaction.Transactional;
+import org.sopt.auth.exception.AuthErrorCode;
 import org.sopt.member.domain.Member;
 import org.sopt.member.exception.MemberErrorCode;
 import org.sopt.member.exception.MemberException;
@@ -47,12 +48,12 @@ public class PostService {
 
     // 게시글 작성
     @Transactional
-    public PostResponse create(PostCreateRequest request) {
-        if (request == null || request.memberId() == null || request.memberId() <= 0) {
-            throw new PostException(PostErrorCode.INVALID_POST, "작성자 ID는 양수여야 합니다.");
+    public PostResponse create(PostCreateRequest request, long memberId) {
+        if (request == null || memberId <= 0) {
+            throw new PostException(PostErrorCode.INVALID_POST, "게시글 입력과 인증된 작성자가 필요합니다.");
         }
         // 회원을 잠금 조회해 삭제와 게시글 생성이 동시에 진행되는 상황 방지
-        Member author = memberRepository.findByIdForUpdate(request.memberId())
+        Member author = memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
         Category category = Category.from(request.category());
 
@@ -116,12 +117,13 @@ public class PostService {
 
     // 게시글 수정
     @Transactional
-    public  PostResponse update(long id, PostRequest request) {
+    public PostResponse update(long id, PostRequest request, long memberId) {
         requireRequest(request);
         Category category = Category.from(request.category());
 
         // 조회한 게시글의 내용과 수정 시각 변경
         Post post = getPostForUpdate(id);
+        requireAuthor(post, memberId);
         post.update(request.title(), request.content(), category, LocalDateTime.now());
 
         return PostResponse.from(post);
@@ -129,9 +131,10 @@ public class PostService {
 
     // 게시글 삭제
     @Transactional
-    public void delete(long id) {
+    public void delete(long id, long memberId) {
         // 게시글을 잠금 조회한 뒤 삭제 / 존재하지 않으면 예외 발생
         Post post = getPostForUpdate(id);
+        requireAuthor(post, memberId);
         repository.delete(post);
     }
 
@@ -157,6 +160,13 @@ public class PostService {
         }
         return memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    // 작성자만 게시글을 수정·삭제할 수 있도록 서비스에서 확인
+    private void requireAuthor(Post post, long memberId) {
+        if (!post.getAuthor().getId().equals(memberId)) {
+            throw new BusinessException(AuthErrorCode.FORBIDDEN);
+        }
     }
 
     private Post getPostForUpdate(long id) {

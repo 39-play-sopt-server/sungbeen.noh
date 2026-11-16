@@ -1,4 +1,7 @@
 package org.sopt.member.service.dto;
 
-public record MemberCreateRequest(String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record MemberCreateRequest(String name, String email,
+                                  @Schema(accessMode = Schema.AccessMode.WRITE_ONLY) String password) {
 }

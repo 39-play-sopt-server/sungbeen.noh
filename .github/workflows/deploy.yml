@@ -78,6 +78,7 @@ jobs:
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           CORS_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
         run: |
           set -euo pipefail
@@ -88,7 +89,7 @@ jobs:
           python3 - <<'PY'
           import os
           from pathlib import Path
-          names = {'SPRING_DATASOURCE_URL': 'DB_URL', 'SPRING_DATASOURCE_USERNAME': 'DB_USERNAME', 'SPRING_DATASOURCE_PASSWORD': 'DB_PASSWORD'}
+          names = {'SPRING_DATASOURCE_URL': 'DB_URL', 'SPRING_DATASOURCE_USERNAME': 'DB_USERNAME', 'SPRING_DATASOURCE_PASSWORD': 'DB_PASSWORD', 'JWT_SECRET': 'JWT_SECRET'}
           if os.environ.get('CORS_ORIGINS'):
               names['CORS_ALLOWED_ORIGINS'] = 'CORS_ORIGINS'
           lines = []
@@ -111,4 +112,4 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "$target" 'mkdir -p /home/ubuntu/assignment/release && chmod 700 /home/ubuntu/assignment/release'
           scp -i ~/.ssh/id_ed25519 assignment.tar compose.env compose.yml deploy/nginx.conf "$target:/home/ubuntu/assignment/release/"
           ssh -i ~/.ssh/id_ed25519 "$target" 'bash -s' < deploy/release.sh
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 https://sopt-39-sungbeen.p-e.kr/api/v1/posts >/dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 https://sopt-39-sungbeen.p-e.kr/api/v1/health >/dev/null

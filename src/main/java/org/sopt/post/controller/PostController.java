@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -38,8 +39,9 @@ public final class PostController implements PostControllerDocs {
     // 게시글 작성 요청
     @Override
     @PostMapping
-    public ResponseEntity<RestResponse<PostResponse>> create(@RequestBody PostCreateRequest request) {
-        PostResponse post = service.create(request);
+    public ResponseEntity<RestResponse<PostResponse>> create(@RequestBody PostCreateRequest request,
+                                                             @AuthenticationPrincipal Long memberId) {
+        PostResponse post = service.create(request, memberId);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(RestResponse.success("게시글이 작성되었습니다.", post));
@@ -67,11 +69,11 @@ public final class PostController implements PostControllerDocs {
         return ResponseEntity.ok(RestResponse.success("게시글을 조회했습니다.", post));
     }
 
-    // 회원 ID를 전달받아 좋아요 추가
+    // 인증된 회원으로 좋아요 추가
     @Override
     @PostMapping("/{id}/likes")
     public ResponseEntity<RestResponse<Void>> addLike(@PathVariable("id") long id,
-                                                       @RequestParam("memberId") long memberId) {
+                                                       @AuthenticationPrincipal Long memberId) {
         service.addLike(id, memberId);
         return ResponseEntity.ok(RestResponse.success("좋아요를 눌렀습니다.", null));
     }
@@ -80,7 +82,7 @@ public final class PostController implements PostControllerDocs {
     @Override
     @DeleteMapping("/{id}/likes")
     public ResponseEntity<RestResponse<Void>> removeLike(@PathVariable("id") long id,
-                                                          @RequestParam("memberId") long memberId) {
+                                                          @AuthenticationPrincipal Long memberId) {
         service.removeLike(id, memberId);
         return ResponseEntity.ok(RestResponse.success("좋아요를 취소했습니다.", null));
     }
@@ -89,17 +91,19 @@ public final class PostController implements PostControllerDocs {
     @Override
     @PutMapping("/{id}")
     public ResponseEntity<RestResponse<PostResponse>> update(@PathVariable("id") long id,
-                                                            @RequestBody PostRequest request) {
+                                                            @RequestBody PostRequest request,
+                                                            @AuthenticationPrincipal Long memberId) {
         // 게시글 수정 후 성공 응답 생성
-        PostResponse post = service.update(id, request);
+        PostResponse post = service.update(id, request, memberId);
         return ResponseEntity.ok(RestResponse.success("게시글이 수정되었습니다.", post));
     }
 
     // 게시글 삭제 요청
     @Override
     @DeleteMapping("/{id}")
-    public ResponseEntity<RestResponse<Void>> delete(@PathVariable("id") long id) {
-        service.delete(id);
+    public ResponseEntity<RestResponse<Void>> delete(@PathVariable("id") long id,
+                                                       @AuthenticationPrincipal Long memberId) {
+        service.delete(id, memberId);
         return ResponseEntity.ok(RestResponse.success("게시글이 삭제되었습니다.", null));
     }
 

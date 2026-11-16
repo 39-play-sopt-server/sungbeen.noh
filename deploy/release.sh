@@ -23,7 +23,7 @@ cp release/nginx.conf deploy/nginx.conf
 # 새 컨테이너가 정상적으로 응답하지 않으면 직전 구성으로 복구
 if sudo docker compose -f compose.yml up -d --force-recreate; then
     for attempt in {1..30}; do
-        if curl -fsS --max-time 3 --resolve sopt-39-sungbeen.p-e.kr:443:127.0.0.1 https://sopt-39-sungbeen.p-e.kr/api/v1/posts >/dev/null; then
+        if curl -fsS --max-time 3 --resolve sopt-39-sungbeen.p-e.kr:443:127.0.0.1 https://sopt-39-sungbeen.p-e.kr/api/v1/health >/dev/null; then
             echo '배포 후 API 응답 확인 완료'
             exit 0
         fi

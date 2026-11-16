@@ -6,6 +6,8 @@ import org.sopt.common.response.RestResponse;
 import org.sopt.member.service.MemberService;
 import org.sopt.member.service.dto.MemberCreateRequest;
 import org.sopt.member.service.dto.MemberResponse;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,11 +36,17 @@ public class MemberController implements MemberControllerDocs {
                 .body(RestResponse.success("회원이 생성되었습니다.", member));
     }
 
+    @Override
+    @GetMapping("/me")
+    public ResponseEntity<RestResponse<MemberResponse>> me(@AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(RestResponse.success("내 정보를 조회했습니다.", service.findById(memberId)));
+    }
+
     // 회원 삭제 요청
     @Override
     @DeleteMapping("/{id}")
-    public ResponseEntity<RestResponse<Void>> delete(@PathVariable("id") long id) {
-        service.delete(id);
+    public ResponseEntity<RestResponse<Void>> delete(@PathVariable("id") long id, @AuthenticationPrincipal Long memberId) {
+        service.delete(id, memberId);
         return ResponseEntity.ok(RestResponse.success("회원이 삭제되었습니다.", null));
     }
 }

@@ -3,7 +3,7 @@ package org.sopt.auth.service;
 import java.util.Objects;
 
 import org.sopt.auth.exception.AuthErrorCode;
-import org.sopt.auth.security.JwtProvider;
+import org.sopt.auth.security.JwtTokenIssuer;
 import org.sopt.auth.service.dto.LoginRequest;
 import org.sopt.auth.service.dto.LoginResponse;
 import org.sopt.common.exception.BusinessException;
@@ -21,14 +21,14 @@ public class AuthService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtProvider jwtProvider;
+    private final JwtTokenIssuer jwtTokenIssuer;
     private final String dummyPassword;
 
     public AuthService(MemberRepository memberRepository, PasswordEncoder passwordEncoder,
-                       JwtProvider jwtProvider) {
+                       JwtTokenIssuer jwtTokenIssuer) {
         this.memberRepository = Objects.requireNonNull(memberRepository);
         this.passwordEncoder = Objects.requireNonNull(passwordEncoder);
-        this.jwtProvider = Objects.requireNonNull(jwtProvider);
+        this.jwtTokenIssuer = Objects.requireNonNull(jwtTokenIssuer);
         // 없는 이메일도 해시 비교를 수행해 계정 유무에 따른 처리 시간 차이를 줄임
         this.dummyPassword = passwordEncoder.encode("unregistered-member-password");
     }
@@ -48,6 +48,6 @@ public class AuthService {
         if (member == null || member.getPassword() == null || !matches) {
             throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
         }
-        return new LoginResponse(jwtProvider.createAccessToken(member.getId()));
+        return new LoginResponse(jwtTokenIssuer.issueAccessToken(member.getId()));
     }
 }

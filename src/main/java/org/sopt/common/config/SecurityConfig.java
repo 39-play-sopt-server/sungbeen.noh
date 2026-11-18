@@ -2,7 +2,7 @@ package org.sopt.common.config;
 
 import jakarta.servlet.DispatcherType;
 import org.sopt.auth.security.JwtAuthenticationFilter;
-import org.sopt.auth.security.JwtProvider;
+import org.sopt.auth.security.JwtTokenVerifier;
 import org.sopt.auth.security.SecurityErrorHandler;
 import org.sopt.member.repository.MemberRepository;
 import org.springframework.context.annotation.Bean;
@@ -21,7 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtProvider jwtProvider,
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtTokenVerifier jwtTokenVerifier,
                                           MemberRepository memberRepository,
                                           SecurityErrorHandler errorHandler) throws Exception {
         return http
@@ -43,7 +43,8 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider, memberRepository),
+                // 경로별 접근 권한을 확인하기 전에 JWT로 인증 정보를 채움
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenVerifier, memberRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

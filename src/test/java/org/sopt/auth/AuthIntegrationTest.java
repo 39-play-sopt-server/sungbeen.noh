@@ -8,7 +8,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sopt.auth.security.JwtProvider;
 import org.sopt.member.repository.MemberRepository;
 import org.sopt.post.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -36,6 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 class AuthIntegrationTest {
+
+    private static final String LOCAL_ORIGIN = "http://localhost:3000";
 
     @Autowired MockMvc mvc;
     @Autowired JsonMapper mapper;
@@ -98,7 +100,7 @@ class AuthIntegrationTest {
         mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON)
                         .content(signupBody("user@example.com", password)))
                 .andExpect(status().isCreated());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(loginRequest().contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(Map.of("email", "user@example.com", "password", password))))
                 .andExpect(status().isOk());
     }
@@ -107,7 +109,7 @@ class AuthIntegrationTest {
     void legacyMemberIsPreservedAndCannotLoginWithoutCredentials() throws Exception {
         jdbc.update("insert into members (name, created_at) values (?, CURRENT_TIMESTAMP)", "기존 회원");
         assertEquals(1, members.count());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(loginRequest().contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(Map.of("email", "legacy@example.com", "password", "password123"))))
                 .andExpect(status().isUnauthorized());
         signup("new@example.com");
@@ -119,7 +121,7 @@ class AuthIntegrationTest {
         for (String body : new String[]{"", "null", "{", "{}"}) {
             mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest());
-            mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+            mvc.perform(loginRequest().contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest());
         }
     }
@@ -129,7 +131,7 @@ class AuthIntegrationTest {
         signup("user@example.com");
         String previous = null;
         for (String email : new String[]{"user@example.com", "unknown@example.com"}) {
-            String body = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+            String body = mvc.perform(loginRequest().contentType(MediaType.APPLICATION_JSON)
                             .content(mapper.writeValueAsString(Map.of("email", email, "password", "incorrect123"))))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
@@ -143,18 +145,24 @@ class AuthIntegrationTest {
     void missingMalformedForgedExpiredAndInvalidSubjectTokensAreUnauthorized() throws Exception {
         long id = signup("user@example.com");
         var key = Keys.hmacShaKeyFor(Base64.getDecoder().decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="));
+        long now = System.currentTimeMillis();
+        // 서비스 구현과 별도로 검증할 조건에 맞춰 테스트 토큰 생성
         String expired = Jwts.builder().subject(Long.toString(id))
-                .expiration(new Date(System.currentTimeMillis() - 60000)).signWith(key).compact();
-        String forged = new JwtProvider(Base64.getEncoder().encodeToString(new byte[64]), 1800000)
-                .createAccessToken(id);
+                .issuedAt(new Date(now - 120000)).claim("token_use", "access")
+                .expiration(new Date(now - 60000)).signWith(key).compact();
+        String forged = Jwts.builder().subject(Long.toString(id))
+                .issuedAt(new Date(now)).claim("token_use", "access")
+                .expiration(new Date(now + 60000)).signWith(Jwts.SIG.HS256.key().build()).compact();
         String invalidSubject = Jwts.builder().subject("not-a-number")
-                .expiration(new Date(System.currentTimeMillis() + 60000)).signWith(key).compact();
-        String noExpiration = Jwts.builder().subject(Long.toString(id)).signWith(key).compact();
+                .issuedAt(new Date(now)).claim("token_use", "access")
+                .expiration(new Date(now + 60000)).signWith(key).compact();
+        String noExpiration = Jwts.builder().subject(Long.toString(id))
+                .issuedAt(new Date(now)).claim("token_use", "access").signWith(key).compact();
         for (String token : new String[]{"", "broken", expired, forged, invalidSubject, noExpiration}) {
             mvc.perform(get("/api/v1/members/me").header("Authorization", "Bearer " + token))
                     .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
         }
-        mvc.perform(get("/api/v1/posts")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/members/me")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -233,8 +241,12 @@ class AuthIntegrationTest {
         return mapper.writeValueAsString(Map.of("name", "회원", "email", email, "password", password));
     }
 
+    private MockHttpServletRequestBuilder loginRequest() {
+        return post("/api/v1/auth/login").header("Origin", LOCAL_ORIGIN);
+    }
+
     private String login(String email) throws Exception {
-        String response = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String response = mvc.perform(loginRequest().contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(Map.of("email", email, "password", "password123"))))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return mapper.readTree(response).path("data").path("accessToken").asString();

@@ -1,6 +1,7 @@
 package org.sopt.auth.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,11 +25,21 @@ public interface AuthControllerDocs {
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
     ResponseEntity<RestResponse<MemberResponse>> signup(MemberCreateRequest request);
 
-    @Operation(summary = "로그인", description = "이메일과 비밀번호를 검증하고 Access Token을 발급합니다.")
+    @Operation(summary = "로그인", description = "허용된 Origin에서 로그인하면 Access Token은 본문, Refresh Token은 HttpOnly 쿠키로 받습니다.")
     @ApiResponse(responseCode = "200", description = "로그인 성공", useReturnTypeSchema = true)
     @ApiResponse(responseCode = "400", description = "이메일·비밀번호 형식 오류",
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
     @ApiResponse(responseCode = "401", description = "이메일 또는 비밀번호 불일치",
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Origin이 없거나 허용되지 않음",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
     ResponseEntity<RestResponse<LoginResponse>> login(LoginRequest request);
+
+    @Operation(summary = "Access Token 재발급", description = "허용된 Origin에서 Refresh Token 쿠키를 보내면 새 Access Token을 받습니다. Refresh Token의 만료 시각은 유지됩니다.")
+    @ApiResponse(responseCode = "200", description = "재발급 성공", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "400", description = "Refresh Token 쿠키 누락, 만료 또는 검증 실패",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Origin이 없거나 허용되지 않음",
+            content = @Content(schema = @Schema(implementation = RestResponse.class)))
+    ResponseEntity<RestResponse<LoginResponse>> refresh(@Parameter(hidden = true) String refreshToken);
 }

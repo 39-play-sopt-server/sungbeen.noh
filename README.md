@@ -74,9 +74,10 @@ export JWT_SECRET="$(openssl rand -base64 32)"
 | `POST /api/v1/auth/signup` | 인증 없이 이름·이메일·비밀번호로 가입, 201 |
 | `POST /api/v1/auth/login` | 허용된 Origin에서 이메일·비밀번호로 로그인. 200, `data.accessToken`, Refresh Token 쿠키 반환 |
 | `POST /api/v1/auth/refresh` | 허용된 Origin에서 Refresh Token 쿠키로 재발급. 200 및 새 `data.accessToken` |
+| `POST /api/v1/auth/logout` | 허용된 Origin에서 토큰 유무와 관계없이 200 및 쿠키 삭제 |
 | `POST /api/v1/members` | 기존 회원 생성 경로 유지. 회원가입과 동일한 입력·검증 적용 |
 | `GET /api/v1/members/me` | 토큰의 회원 ID와 이름 조회 |
-| `DELETE /api/v1/members/{id}` | 본인만 탈퇴. 작성한 게시글이 있으면 기존처럼 409 |
+| `DELETE /api/v1/members/{id}` | 본인만 탈퇴. 성공 시 쿠키 삭제, 작성한 게시글이 있으면 409 |
 | `/api/v1/posts/**` | 조회를 포함해 모든 요청에 인증 필요 |
 | `GET /api/v1/health` | 인증 없이 배포 상태 확인 |
 | `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` | 인증 없이 API 문서 확인 |
@@ -102,6 +103,10 @@ curl http://localhost:8080/api/v1/members/me \
 curl -X POST http://localhost:8080/api/v1/auth/refresh \
   -H 'Origin: http://localhost:8080' \
   -b "$cookie_jar"
+
+curl -X POST http://localhost:8080/api/v1/auth/logout \
+  -H 'Origin: http://localhost:8080' \
+  -b "$cookie_jar" -c "$cookie_jar"
 rm "$cookie_jar"
 ```
 
@@ -109,7 +114,9 @@ Access Token은 기본 15분(`jwt.access-token-expiration`), Refresh Token은 �
 
 유효한 회원이라도 타인의 글 수정·삭제 또는 타인 탈퇴 요청은 403입니다. 없는 이메일과 틀린 비밀번호는 동일한 `INVALID_CREDENTIALS` 응답을 반환합니다.
 
-Refresh Token은 `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth` 쿠키로 설정하고 운영에서는 `Secure`를 사용합니다. 로그인과 재발급은 허용 목록과 정확히 일치하는 `Origin`이 필요하며, 출처 검사를 통과하지 못하면 403입니다. 로컬 프런트엔드가 다른 포트에서 API를 호출할 때는 `credentials: 'include'`로 쿠키 사용을 요청합니다. 운영에서는 실제 사용하는 HTTPS 출처만 허용합니다.
+Refresh Token은 `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth` 쿠키로 설정하고 운영에서는 `Secure`를 사용합니다. 로그인·재발급·로그아웃은 허용 목록과 정확히 일치하는 `Origin`이 필요하며, 출처 검사를 통과하지 못하면 403입니다. 로컬 프런트엔드가 다른 포트에서 API를 호출할 때는 `credentials: 'include'`로 쿠키 사용을 요청합니다. 운영에서는 실제 사용하는 HTTPS 출처만 허용합니다.
+
+로그아웃하거나 회원 탈퇴에 성공하면 서버는 Refresh Token 쿠키를 삭제하도록 응답하고, 클라이언트는 보관한 Access Token을 지웁니다. 로그아웃 전에 복사된 토큰은 만료까지 유효합니다. 탈퇴한 회원의 토큰은 회원 존재 확인에서 거부됩니다.
 
 게시글 작성 본문은 `{"title":"제목","content":"본문","category":"FREE"}`입니다. 작성자와 좋아요 회원은 토큰에서 결정하므로 생성 본문의 `memberId`와 좋아요 요청의 `memberId` 쿼리를 보내지 않습니다. 목록 검색의 `memberId`는 작성자 검색 조건으로 계속 사용할 수 있습니다.
 

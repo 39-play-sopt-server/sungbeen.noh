@@ -42,4 +42,9 @@ public interface AuthControllerDocs {
     @ApiResponse(responseCode = "403", description = "Origin이 없거나 허용되지 않음",
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
     ResponseEntity<RestResponse<LoginResponse>> refresh(@Parameter(hidden = true) String refreshToken);
+
+    @Operation(summary = "로그아웃", description = "허용된 Origin에서 요청하면 Refresh Token 쿠키를 삭제합니다. 쿠키가 없어도 성공으로 처리합니다.")
+    @ApiResponse(responseCode = "200", description = "로그아웃 성공", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "403", description = "Origin이 없거나 허용되지 않음")
+    ResponseEntity<RestResponse<Void>> logout();
 }

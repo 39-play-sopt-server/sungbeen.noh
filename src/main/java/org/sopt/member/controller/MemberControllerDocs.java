@@ -35,7 +35,7 @@ public interface MemberControllerDocs {
 
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "회원 삭제", description = "본인만 삭제할 수 있습니다. 작성한 게시글이 있으면 삭제를 거부하며, 회원 삭제 시 좋아요를 함께 정리합니다.")
-    @ApiResponse(responseCode = "200", description = "회원 삭제 성공", useReturnTypeSchema = true)
+    @ApiResponse(responseCode = "200", description = "회원 삭제 성공 및 Refresh Token 쿠키 삭제", useReturnTypeSchema = true)
     @ApiResponse(responseCode = "404", description = "존재하지 않는 회원",
             content = @Content(schema = @Schema(implementation = RestResponse.class)))
     @ApiResponse(responseCode = "409", description = "작성한 게시글이 있는 회원",

@@ -59,4 +59,13 @@ public class AuthController implements AuthControllerDocs {
         String accessToken = authService.refresh(refreshToken);
         return ResponseEntity.ok(RestResponse.success("Access Token이 재발급되었습니다.", new LoginResponse(accessToken)));
     }
+
+    @Override
+    @PostMapping("/logout")
+    public ResponseEntity<RestResponse<Void>> logout() {
+        // 토큰이 만료됐거나 쿠키가 이미 없어도 브라우저에 삭제 응답 전달
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.expire().toString())
+                .body(RestResponse.success("로그아웃되었습니다.", null));
+    }
 }

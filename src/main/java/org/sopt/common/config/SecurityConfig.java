@@ -32,10 +32,11 @@ public class SecurityConfig {
         var paths = PathPatternRequestMatcher.withDefaults();
         var cookieRequests = new OrRequestMatcher(
                 paths.matcher(HttpMethod.POST, "/api/v1/auth/login"),
-                paths.matcher(HttpMethod.POST, "/api/v1/auth/refresh"));
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/refresh"),
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/logout"));
 
         return http
-                // 쿠키를 설정하거나 읽는 요청은 Origin 검사로 CSRF 대응
+                // 인증 쿠키를 설정·조회·삭제하는 요청은 Origin 검사로 CSRF 대응
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .formLogin(AbstractHttpConfigurer::disable)

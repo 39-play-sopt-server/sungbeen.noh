@@ -72,11 +72,14 @@ export JWT_SECRET="$(openssl rand -base64 32)"
 | API | 인증 및 처리 |
 | --- | --- |
 | `POST /api/v1/auth/signup` | 인증 없이 이름·이메일·비밀번호로 가입, 201 |
-| `POST /api/v1/auth/login` | 인증 없이 이메일·비밀번호로 로그인, 200 및 `data.accessToken` |
+| `POST /api/v1/auth/login` | 허용된 Origin에서 이메일·비밀번호로 로그인. 200, `data.accessToken`, Refresh Token 쿠키 반환 |
+| `POST /api/v1/auth/refresh` | 허용된 Origin에서 Refresh Token 쿠키로 재발급. 200 및 새 `data.accessToken` |
+| `POST /api/v1/auth/logout` | 허용된 Origin에서 토큰 유무와 관계없이 200 및 쿠키 삭제 |
 | `POST /api/v1/members` | 기존 회원 생성 경로 유지. 회원가입과 동일한 입력·검증 적용 |
 | `GET /api/v1/members/me` | 토큰의 회원 ID와 이름 조회 |
-| `DELETE /api/v1/members/{id}` | 본인만 탈퇴. 작성한 게시글이 있으면 기존처럼 409 |
-| `/api/v1/posts/**` | 조회를 포함해 모든 요청에 인증 필요 |
+| `DELETE /api/v1/members/{id}` | 본인만 탈퇴. 성공 시 쿠키 삭제, 작성한 게시글이 있으면 409 |
+| `GET /api/v1/posts`, `GET /api/v1/posts/{id}` (숫자 ID), `GET /api/v1/posts/categories` | 로그인 없이 조회. 상세 조회는 로그인 여부와 관계없이 조회수 증가 |
+| 게시글 작성·수정·삭제 및 좋아요 추가·취소 | Access Token 필요. 게시글 수정·삭제는 작성자만 가능 |
 | `GET /api/v1/health` | 인증 없이 배포 상태 확인 |
 | `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` | 인증 없이 API 문서 확인 |
 
@@ -87,16 +90,34 @@ curl -X POST http://localhost:8080/api/v1/auth/signup \
   -H 'Content-Type: application/json' \
   -d '{"name":"성빈","email":"user@example.com","password":"password123"}'
 
+cookie_jar="$(mktemp)"
 curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H 'Origin: http://localhost:8080' \
   -H 'Content-Type: application/json' \
+  -c "$cookie_jar" \
   -d '{"email":"user@example.com","password":"password123"}'
 
 # 로그인 응답의 data.accessToken을 입력
 curl http://localhost:8080/api/v1/members/me \
   -H 'Authorization: Bearer <accessToken>'
+
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H 'Origin: http://localhost:8080' \
+  -b "$cookie_jar"
+
+curl -X POST http://localhost:8080/api/v1/auth/logout \
+  -H 'Origin: http://localhost:8080' \
+  -b "$cookie_jar" -c "$cookie_jar"
+rm "$cookie_jar"
 ```
 
-Access Token의 기본 유효 시간은 30분(`jwt.access-token-expiration`, 밀리초)입니다. 토큰 누락·위조·만료와 탈퇴한 회원의 토큰은 보호된 API에서 401을 반환합니다. 유효한 회원이라도 타인의 글 수정·삭제 또는 타인 탈퇴 요청은 403입니다. 없는 이메일과 틀린 비밀번호는 동일한 `INVALID_CREDENTIALS` 응답을 반환합니다. 세션과 Refresh Token은 사용하지 않으므로 만료 후에는 다시 로그인합니다.
+Access Token은 기본 15분(`jwt.access-token-expiration`), Refresh Token은 기본 24시간(`jwt.refresh-token-expiration`)이며 두 설정의 단위는 밀리초입니다. 재발급 시 Refresh Token의 만료 시각은 유지됩니다. 토큰 종류를 확인하므로 기존 실습에서 받은 Access Token은 다시 로그인해 발급받아야 합니다. 보호 API의 Access Token 검증 실패는 401, 재발급의 Refresh Token 누락·만료·검증 실패는 `400 INVALID_REFRESH_TOKEN`입니다.
+
+유효한 회원이라도 타인의 글 수정·삭제 또는 타인 탈퇴 요청은 403입니다. 없는 이메일과 틀린 비밀번호는 동일한 `INVALID_CREDENTIALS` 응답을 반환합니다.
+
+Refresh Token은 `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth` 쿠키로 설정하고 운영에서는 `Secure`를 사용합니다. 로그인·재발급·로그아웃은 허용 목록과 정확히 일치하는 `Origin`이 필요하며, 출처 검사를 통과하지 못하면 403입니다. 로컬 프런트엔드가 다른 포트에서 API를 호출할 때는 `credentials: 'include'`로 쿠키 사용을 요청합니다. 운영에서는 실제 사용하는 HTTPS 출처만 허용합니다.
+
+로그아웃하거나 회원 탈퇴에 성공하면 서버는 Refresh Token 쿠키를 삭제하도록 응답하고, 클라이언트는 보관한 Access Token을 지웁니다. 로그아웃 전에 복사된 토큰은 만료까지 유효합니다. 탈퇴한 회원의 토큰은 회원 존재 확인에서 거부됩니다.
 
 게시글 작성 본문은 `{"title":"제목","content":"본문","category":"FREE"}`입니다. 작성자와 좋아요 회원은 토큰에서 결정하므로 생성 본문의 `memberId`와 좋아요 요청의 `memberId` 쿼리를 보내지 않습니다. 목록 검색의 `memberId`는 작성자 검색 조건으로 계속 사용할 수 있습니다.
 

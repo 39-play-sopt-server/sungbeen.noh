@@ -1,8 +1,9 @@
 package org.sopt.common.config;
 
 import jakarta.servlet.DispatcherType;
+import org.sopt.auth.security.AuthOriginFilter;
 import org.sopt.auth.security.JwtAuthenticationFilter;
-import org.sopt.auth.security.JwtProvider;
+import org.sopt.auth.security.JwtTokenVerifier;
 import org.sopt.auth.security.SecurityErrorHandler;
 import org.sopt.member.repository.MemberRepository;
 import org.springframework.context.annotation.Bean;
@@ -16,16 +17,26 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtProvider jwtProvider,
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtTokenVerifier jwtTokenVerifier,
                                           MemberRepository memberRepository,
+                                          BrowserOrigins browserOrigins,
                                           SecurityErrorHandler errorHandler) throws Exception {
+        var paths = PathPatternRequestMatcher.withDefaults();
+        var cookieRequests = new OrRequestMatcher(
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/login"),
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/refresh"),
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/logout"));
+
         return http
-                // 쿠키·세션 대신 Authorization 헤더의 토큰으로만 인증
+                // 인증 쿠키를 설정·조회·삭제하는 요청은 Origin 검사로 CSRF 대응
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -35,15 +46,22 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login",
+                        .requestMatchers(cookieRequests).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup",
                                 "/api/v1/members").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        // 목록·상세·카테고리만 공개 / 상세는 숫자 ID로 제한해 다른 조회 경로 보호
+                        .requestMatchers(HttpMethod.GET, "/api/v1/posts",
+                                "/api/v1/posts/{id:[0-9]+}", "/api/v1/posts/categories").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider, memberRepository),
+                // CORS 사전 요청을 먼저 처리한 뒤 쿠키를 쓰는 POST 요청의 Origin 확인
+                .addFilterAfter(new AuthOriginFilter(cookieRequests, browserOrigins, errorHandler), CorsFilter.class)
+                // 경로별 접근 권한을 확인하기 전에 JWT로 인증 정보를 채움
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenVerifier, memberRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

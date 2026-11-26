@@ -50,6 +50,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup",
                                 "/api/v1/members").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        // 목록·상세·카테고리만 공개 / 상세는 숫자 ID로 제한해 다른 조회 경로 보호
+                        .requestMatchers(HttpMethod.GET, "/api/v1/posts",
+                                "/api/v1/posts/{id:[0-9]+}", "/api/v1/posts/categories").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception

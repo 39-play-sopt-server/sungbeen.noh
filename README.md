@@ -78,7 +78,8 @@ export JWT_SECRET="$(openssl rand -base64 32)"
 | `POST /api/v1/members` | 기존 회원 생성 경로 유지. 회원가입과 동일한 입력·검증 적용 |
 | `GET /api/v1/members/me` | 토큰의 회원 ID와 이름 조회 |
 | `DELETE /api/v1/members/{id}` | 본인만 탈퇴. 성공 시 쿠키 삭제, 작성한 게시글이 있으면 409 |
-| `/api/v1/posts/**` | 조회를 포함해 모든 요청에 인증 필요 |
+| `GET /api/v1/posts`, `GET /api/v1/posts/{id}` (숫자 ID), `GET /api/v1/posts/categories` | 로그인 없이 조회. 상세 조회는 로그인 여부와 관계없이 조회수 증가 |
+| 게시글 작성·수정·삭제 및 좋아요 추가·취소 | Access Token 필요. 게시글 수정·삭제는 작성자만 가능 |
 | `GET /api/v1/health` | 인증 없이 배포 상태 확인 |
 | `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` | 인증 없이 API 문서 확인 |
 
